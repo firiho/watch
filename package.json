@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.6.1",
     "firebase": "^10.14.1",
     "firebaseui": "^6.1.0",
     "next": "16.1.6",

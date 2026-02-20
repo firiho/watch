@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next"
 import { Inter, Fira_Code } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/navbar/navbar";
@@ -52,8 +53,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${firaCode.variable}`} suppressHydrationWarning>
-        <AuthProvider>
+      <body className={`${inter.variable} ${firaCode.variable}`} suppressHydrationWarning>        <AuthProvider>
           <WatchlistProvider>
             <ReminderProvider>
               <ModalProvider>
@@ -67,6 +67,7 @@ export default function RootLayout({
             </ReminderProvider>
           </WatchlistProvider>
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
