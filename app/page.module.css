@@ -1,0 +1,15 @@
+.main {
+  min-height: 100vh;
+  padding-bottom: 100px;
+}
+
+.contentSections {
+  /* Ensuring sections are spaced correctly below the hero */
+  margin-top: 20px;
+}
+
+@media (max-width: 768px) {
+  .contentSections {
+    margin-top: 0;
+  }
+}

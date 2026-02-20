@@ -1,0 +1,557 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  max-height: 90vh;
+  background: rgba(10, 10, 10, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.modal::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+.closeButton {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s ease;
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.1);
+}
+
+/* Header / Backdrop Section */
+.hero {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 400px;
+}
+
+.backdrop {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.heroGradient {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 60%;
+  background: linear-gradient(to top, rgba(10, 10, 10, 1), transparent);
+}
+
+.heroContent {
+  position: absolute;
+  bottom: 40px;
+  left: 40px;
+  right: 40px;
+  z-index: 2;
+}
+
+.title {
+  font-size: 48px;
+  font-weight: 800;
+  color: white;
+  margin-bottom: 20px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.tagline {
+  font-size: 18px;
+  color: var(--accent-color);
+  font-style: italic;
+  margin-bottom: 20px;
+  display: block;
+}
+
+.actions {
+  display: flex;
+  gap: 15px;
+}
+
+.playButton {
+  display: none; /* Removed as requested */
+}
+
+.providerLink {
+  background: white;
+  color: black;
+  padding: 12px 24px;
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border-radius: 4px;
+  transition: transform 0.2s ease;
+}
+
+.providerLink:hover {
+  transform: scale(1.05);
+}
+
+.providerText {
+  white-space: nowrap;
+}
+
+.modalProviderLogos {
+  display: flex;
+  gap: 8px;
+}
+
+.modalProviderLogo {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+}
+
+.watchlistButton {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  padding: 12px 30px;
+  font-weight: 600;
+  font-size: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(5px);
+  transition: all 0.2s ease;
+}
+
+.watchlistButton.inList {
+  background: rgba(100, 255, 218, 0.1);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* Detail Content Section */
+.content {
+  padding: 40px;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 40px;
+}
+
+.overview {
+  font-size: 17px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.metaBadge {
+  color: var(--accent-color);
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.metaStar {
+  font-size: 18px;
+}
+
+.metaYear {
+  font-weight: 600;
+  color: white;
+  font-size: 16px;
+}
+
+.metaType {
+  padding: 2px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 700;
+}
+
+.hdBadge {
+  background: var(--accent-color);
+  color: black;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 10px rgba(100, 255, 218, 0.3);
+}
+
+.sdBadge {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.bellButton {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(5px);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bellButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.bellButton.active {
+  background: var(--accent-color);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: black;
+  box-shadow: 0 0 20px rgba(100, 255, 218, 0.4);
+}
+
+.bellButton.active .bellIcon {
+  color: black;
+}
+
+.bellIcon {
+  font-size: 20px;
+}
+
+.metaGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.metaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.metaLabel {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.metaValue {
+  font-size: 15px;
+  color: white;
+}
+
+.genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.genreTag {
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  font-size: 12px;
+}
+
+/* TV Sections */
+.tvContainer {
+  padding: 0 40px 40px;
+}
+
+.seasonSelect {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.seasonSelect h3 {
+  font-size: 24px;
+}
+
+.seasonDropdown {
+  background: rgba(40, 40, 40, 0.8);
+  color: white;
+  padding: 10px 40px 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  backdrop-filter: blur(10px);
+}
+
+.episodesGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.episodeRow {
+  display: grid;
+  grid-template-columns: 50px 150px 1fr;
+  gap: 20px;
+  padding: 20px;
+  background: #0a0a0a;
+  transition: background 0.2s ease;
+  align-items: center;
+}
+
+.episodeRow:hover {
+  background: #141414;
+}
+
+.episodeNumber {
+  font-size: 24px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.episodeImage {
+  width: 150px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.episodeInfo h4 {
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.episodeOverview {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---- Cast Section ---- */
+.castSection {
+  margin-top: 40px;
+  padding: 0 40px;
+}
+
+.castTitle {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--text-white);
+}
+
+.castCarousel {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  padding-bottom: 20px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.castCarousel::-webkit-scrollbar {
+  display: none;
+}
+
+.castMember {
+  flex: 0 0 120px;
+  text-align: center;
+}
+
+.castImageWrapper {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.castMember:hover .castImageWrapper {
+  transform: translateY(-5px);
+  border-color: var(--accent-light);
+}
+
+.castImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.noCastImage {
+  font-size: 40px;
+  opacity: 0.5;
+}
+
+.castName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-white);
+  display: block;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.castCharacter {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Loading State */
+.loading {
+  height: 60vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top-color: var(--accent-color);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(50px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (max-width: 1200px) {
+  .modal {
+    max-width: 90%;
+  }
+}
+
+@media (max-width: 768px) {
+  .overlay {
+    padding: 0;
+  }
+  
+  .modal {
+    max-width: 100%;
+    height: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  
+  .hero {
+    min-height: 300px;
+  }
+  
+  .title {
+    font-size: 32px;
+  }
+  
+  .content {
+    grid-template-columns: 1fr;
+    padding: 20px;
+  }
+  
+  .episodeRow {
+    grid-template-columns: 40px 100px 1fr;
+    gap: 15px;
+    padding: 15px;
+  }
+  
+  .episodeImage {
+    width: 100px;
+  }
+}

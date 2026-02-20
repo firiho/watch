@@ -1,0 +1,60 @@
+.footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  padding: 30px 20px;
+  text-align: center;
+  background-color: var(--bg-color);
+  border-top: 1px solid var(--bg-color-lighter);
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.heartIcon {
+  width: 16px;
+  height: 16px;
+  margin: 0 4px;
+  color: #f43f5e; /* text-destructive / rose-500 */
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-block;
+  vertical-align: middle;
+  position: relative;
+  top: -1px; /* Subtle adjustment if needed */
+}
+
+.heartIcon:hover {
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: .7;
+    transform: scale(1.1);
+  }
+}
+
+.credit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  gap: 4px;
+}
+
+.credit a:hover {
+  color: var(--accent-color);
+}

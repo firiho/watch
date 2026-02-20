@@ -1,0 +1,106 @@
+:root {
+  /* Color Palette from irihoflambeau.com */
+  --bg-color: #000000;
+  --bg-color-light: #0a0a0a;
+  --bg-color-lighter: #1a1a1a;
+  
+  --accent-color: #64ffda;
+  --accent-color-hover: rgba(100, 255, 218, 0.1);
+  
+  --text-primary: #ccd6f6;
+  --text-secondary: #8892b0;
+  --text-white: #e6f1ff;
+  
+  --font-sans: 'Inter', -apple-system, system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+  
+  --transition: all 0.25s cubic-bezier(0.645, 0.045, 0.355, 1);
+  --border-radius: 4px;
+  --nav-height: 100px;
+  --nav-scroll-height: 70px;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  background-color: var(--bg-color);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.3;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin: 0 0 10px 0;
+  line-height: 1.1;
+}
+
+p {
+  margin: 0 0 15px 0;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--bg-color-lighter);
+  border: 3px solid var(--bg-color);
+  border-radius: 10px;
+}
+
+button {
+  cursor: pointer;
+  border: 0;
+  border-radius: var(--border-radius);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 25px;
+}
+
+@media (max-width: 1080px) {
+  .container {
+    padding: 0 40px;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 25px;
+  }
+}
+
+.text-accent {
+  color: var(--accent-color);
+  font-family: var(--font-mono);
+}
+
+.glass {
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}

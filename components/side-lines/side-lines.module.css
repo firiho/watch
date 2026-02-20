@@ -1,0 +1,39 @@
+.sideLine {
+  position: fixed;
+  bottom: 0;
+  width: 40px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.leftLine {
+  left: 40px;
+}
+
+.rightLine {
+  right: 40px;
+}
+
+.line {
+  width: 1px;
+  height: 80px;
+  background-color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+@media (max-width: 1080px) {
+  .leftLine {
+    left: 20px;
+  }
+  .rightLine {
+    right: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sideLine {
+    display: none;
+  }
+}

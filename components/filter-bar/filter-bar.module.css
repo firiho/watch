@@ -1,0 +1,75 @@
+.filterBar {
+  display: flex;
+  gap: 30px; /* Generous spacing like navbar links */
+  align-items: center;
+  transition: var(--transition);
+}
+
+.pending {
+  opacity: 0.5;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.accentPrefix {
+  color: var(--accent-color);
+  font-weight: 500;
+}
+
+.select {
+  background: transparent;
+  color: var(--text-primary);
+  border: none;
+  padding: 8px 0;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: var(--transition);
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  letter-spacing: normal;
+  border-bottom: 1px solid transparent;
+}
+
+.select:hover {
+  color: var(--accent-color);
+}
+
+.select:focus {
+  color: var(--accent-color);
+}
+
+.select option {
+  background: #020617; /* Darker, more modern background */
+  color: var(--text-primary);
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+@media (max-width: 1080px) {
+  .filterBar {
+    gap: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .filterBar {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    gap: 24px;
+    scrollbar-width: none;
+  }
+  
+  .filterBar::-webkit-scrollbar {
+    display: none;
+  }
+}

@@ -1,0 +1,244 @@
+.searchWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Trigger button in navbar */
+.searchTrigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.searchTrigger:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+}
+
+.searchHint {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 2px 5px;
+  margin-left: 4px;
+}
+
+/* Backdrop */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 999;
+}
+
+/* Modal */
+.searchModal {
+  position: fixed;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 560px;
+  max-width: 90vw;
+  background: #111111;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  z-index: 1000;
+  overflow: hidden;
+  box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.8);
+  animation: searchSlideIn 0.2s ease-out;
+}
+
+@keyframes searchSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+/* Input area */
+.inputWrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.searchIcon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-white);
+  font-size: 16px;
+  font-family: var(--font-sans);
+}
+
+.searchInput::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.escKey {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 3px 6px;
+  flex-shrink: 0;
+}
+
+/* Results */
+.resultsContainer {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.resultsContainer::-webkit-scrollbar {
+  width: 6px;
+}
+
+.resultsContainer::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.resultsList {
+  list-style: none;
+  padding: 8px;
+}
+
+.resultItem {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.resultItem:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.resultPoster {
+  width: 40px;
+  height: 56px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.resultPoster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.noPoster {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.resultInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.resultTitle {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.resultMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+.resultType {
+  color: var(--accent-color);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid rgba(100, 255, 218, 0.2);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.resultYear {
+  color: var(--text-secondary);
+}
+
+.resultRating {
+  color: #fbbf24;
+}
+
+/* States */
+.loadingState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--accent-color);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.emptyState {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}

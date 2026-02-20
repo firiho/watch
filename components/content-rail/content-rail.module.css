@@ -1,0 +1,143 @@
+.section {
+  padding: 50px 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.railContainer {
+  width: 90%;
+  max-width: 1600px;
+  position: relative;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+.sectionTitle {
+  font-size: clamp(26px, 5vw, 32px);
+  white-space: nowrap;
+  margin-right: 20px;
+}
+
+.railLine {
+  height: 1px;
+  width: 100%;
+  max-width: 300px;
+  background-color: var(--bg-color-lighter);
+}
+
+.railWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.rail {
+  display: flex;
+  gap: 80px;
+  overflow-x: auto;
+  overflow-y: visible; 
+  padding: 100px 0 150px; /* Increased vertical padding */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  cursor: grab;
+  scroll-behavior: smooth;
+  position: relative;
+}
+
+.railWrapper {
+  position: relative;
+  width: 100%;
+  overflow-x: clip; /* Clip horizontally but allow vertical overflow for expansion */
+}
+
+.railSpacer {
+  flex: 0 0 40px;
+}
+
+.rail.dragging {
+  cursor: grabbing;
+  scroll-behavior: auto;
+}
+
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+.itemWithNumber {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  flex: 0 0 auto;
+  transition: z-index 0.3s ease;
+}
+
+.itemWithNumber:hover {
+  z-index: 100;
+}
+
+.bigNumber {
+  font-size: clamp(140px, 15vw, 190px);
+  font-weight: 900;
+  line-height: 1;
+  color: transparent;
+  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.15);
+  position: absolute;
+  left: -55px; /* Shifted left to peek out */
+  bottom: -20px;
+  z-index: 0;
+  user-select: none;
+  pointer-events: none;
+  transition: all 0.4s ease;
+}
+
+.itemWithNumber:hover .bigNumber {
+  -webkit-text-stroke: 2px var(--accent-color);
+  color: rgba(100, 255, 218, 0.05); /* Subtle inner glow */
+  transform: translateX(-5px);
+}
+
+.navArea {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 80px;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.3s ease;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.8), transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.prevArea {
+  left: -20px;
+}
+
+.nextArea {
+  right: -20px;
+  background: linear-gradient(to left, rgba(0, 0, 0, 0.8), transparent);
+}
+
+.railWrapper:hover .navArea {
+  opacity: 1;
+}
+
+.navArrow {
+  color: var(--text-white);
+  font-size: 50px;
+  font-weight: 200;
+  transition: var(--transition);
+}
+
+.navArea:hover .navArrow {
+  color: var(--accent-color);
+  transform: scale(1.2);
+}

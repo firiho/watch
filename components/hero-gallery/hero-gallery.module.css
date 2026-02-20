@@ -1,0 +1,231 @@
+.heroGallery {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  min-height: 700px;
+  overflow: hidden;
+  background-color: var(--bg-color);
+}
+
+.heroSlide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1), transform 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(1.05); /* Slight scale for depth */
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  z-index: 1;
+}
+
+.heroSlide.active {
+  opacity: 1;
+  transform: scale(1);
+  z-index: 2;
+}
+
+.backgroundImage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  z-index: -1;
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* Shifted gradient to match the new content start at 100px */
+  background: linear-gradient(
+    90deg,
+    var(--bg-color) 0%,
+    rgba(0, 0, 0, 0.8) 30%,
+    rgba(0, 0, 0, 0.4) 50%,
+    transparent 100%
+  );
+  z-index: 0;
+}
+
+.heroContentWrapper {
+  width: 100%;
+  padding: 80px 100px 0; /* Added top padding to shift content down */
+  position: relative;
+  z-index: 3;
+}
+
+.heroContent {
+  position: relative;
+  max-width: 50%;
+  opacity: 0;
+  text-align: left;
+}
+
+.heroSlide.active .heroContent {
+  animation: slideUp 0.8s ease-out 0.2s forwards;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.heroTitle {
+  font-size: clamp(48px, 6vw, 90px);
+  font-weight: 800;
+  margin: 15px 0 25px;
+  line-height: 1;
+  color: var(--text-white);
+  cursor: pointer;
+}
+
+.heroDescription {
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 40px;
+  display: -webkit-box;
+  line-clamp: 3;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.heroButtons {
+  display: flex;
+  gap: 15px;
+}
+
+.primaryButton {
+  color: var(--bg-color);
+  background-color: var(--accent-color);
+  border: 1px solid var(--accent-color);
+  padding: 18px 34px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 1px;
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.primaryButton:hover {
+  background-color: transparent;
+  color: var(--accent-color);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px -15px var(--accent-color);
+}
+
+.primaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.primaryButton.inListBtn {
+  background-color: transparent;
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.primaryButton.inListBtn:hover {
+  background-color: rgba(255, 80, 80, 0.15);
+  border-color: #ff5050;
+  color: #ff5050;
+  box-shadow: 0 10px 30px -15px #ff5050;
+}
+
+
+.indicators {
+  position: absolute;
+  bottom: 50px;
+  right: 100px;
+  z-index: 10;
+  display: flex;
+  gap: 20px;
+  padding: 12px 24px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(100, 255, 218, 0.1);
+  border-radius: 50px;
+  box-shadow: 0 10px 30px -10px rgba(2, 12, 27, 0.7);
+  transition: var(--transition);
+}
+
+.indicators:hover {
+  background: rgba(0, 0, 0, 0.6);
+  border-color: rgba(100, 255, 218, 0.2);
+}
+
+.indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+  opacity: 0.5;
+  padding: 0;
+}
+
+.indicator.activeIndicator {
+  background-color: var(--accent-color);
+  transform: scale(1.5);
+  opacity: 1;
+  box-shadow: 0 0 10px var(--accent-color);
+}
+
+@media (max-width: 1080px) {
+  .heroGallery {
+    height: 80vh;
+  }
+  .overlay {
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(10, 25, 47, 0.4) 50%,
+      var(--bg-color) 100%
+    );
+  }
+  .heroContentWrapper {
+    padding: 0 20px;
+  }
+  .heroContent {
+    max-width: 100%;
+    margin-top: 150px;
+  }
+  .indicators {
+    right: 40px;
+    left: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .indicators {
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 30px;
+  }
+  .heroTitle {
+    font-size: 40px;
+  }
+  .heroContent {
+    margin-top: 100px;
+  }
+}
