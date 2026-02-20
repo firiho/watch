@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useModal } from '@/context/modal-context';
 import { useWatchlist } from '@/context/watchlist-context';
 import { useAuth } from '@/context/auth-context';
 import { useReminders } from '@/context/reminder-context';
 import { ContentItem, getTVSeasonDetails, Episode } from '@/lib/tmdb';
+import { selectBestYoutubeTrailer, TMDBVideo } from '@/lib/tmdb-video-util';
 import styles from './movie-modal.module.css';
 
 const MovieModal = () => {
@@ -22,14 +23,54 @@ const MovieModal = () => {
   const [activeSeason, setActiveSeason] = useState(1);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
 
+  // Trailer state
+  const [trailer, setTrailer] = useState<TMDBVideo | null>(null);
+  const [trailerLoading, setTrailerLoading] = useState(false);
+  const [trailerReady, setTrailerReady] = useState(false);
+  const [trailerMuted, setTrailerMuted] = useState(true);
+  const [trailerPlay, setTrailerPlay] = useState(false);
+  const [trailerError, setTrailerError] = useState(false);
+  const playerRef = useRef<HTMLIFrameElement | null>(null);
+
   useEffect(() => {
     if (activeItem) {
       fetchDetails();
     } else {
       setData(null);
       setEpisodes([]);
+      setTrailer(null);
+      setTrailerPlay(false);
+      setTrailerReady(false);
+      setTrailerError(false);
     }
   }, [activeItem]);
+  // Fetch trailer/teaser videos for movie or TV season
+  const fetchTrailer = async (seasonOverride?: number) => {
+    if (!activeItem) return;
+    setTrailer(null);
+    setTrailerLoading(true);
+    setTrailerError(false);
+    try {
+      let url = '';
+      if (activeItem.type === 'movie') {
+        url = `https://api.themoviedb.org/3/movie/${activeItem.id}/videos?language=en-US`;
+      } else if (activeItem.type === 'tv') {
+        // Use selected season
+        const seasonToUse = seasonOverride ?? activeSeason ?? 1;
+        url = `https://api.themoviedb.org/3/tv/${activeItem.id}/season/${seasonToUse}/videos?language=en-US`;
+      }
+      const res = await fetch('/api/tmdb-proxy?url=' + encodeURIComponent(url));
+      if (!res.ok) throw new Error('Failed to fetch trailer');
+      const json = await res.json();
+      const best = selectBestYoutubeTrailer(json.results || []);
+      setTrailer(best || null);
+    } catch (e) {
+      console.error('[MovieModal] fetchTrailer error:', e);
+      setTrailerError(true);
+    } finally {
+      setTrailerLoading(false);
+    }
+  };
 
   const fetchDetails = async () => {
     if (!activeItem) return;
@@ -44,7 +85,12 @@ const MovieModal = () => {
         const firstSeason = json.seasons?.[0]?.season_number ?? 1;
         setActiveSeason(firstSeason);
         fetchEpisodes(json.id, firstSeason);
+        // Fetch trailer for the selected season after details loaded
+        fetchTrailer(firstSeason);
+        return;
       }
+      // For movies, fetch trailer after details loaded
+      fetchTrailer();
     } catch (error) {
       console.error('Error fetching details:', error);
     } finally {
@@ -70,6 +116,47 @@ const MovieModal = () => {
     const season = parseInt(e.target.value);
     setActiveSeason(season);
     if (data) fetchEpisodes(data.id, season);
+    // Refetch trailer for new season (pass explicit season)
+    fetchTrailer(season);
+  };
+  // iframe-based player controls
+  useEffect(() => {
+    if (!trailer) return;
+    setTrailerReady(false);
+    setTrailerPlay(false);
+    setTrailerMuted(true);
+    const t = setTimeout(() => {
+      setTrailerPlay(true);
+      setTrailerReady(true);
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [trailer]);
+
+  const handleMuteToggle = () => {
+    const iframe = playerRef.current;
+    if (iframe && iframe.contentWindow) {
+      try {
+        const cmd = trailerMuted ? 'unMute' : 'mute';
+        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: cmd, args: [] }), '*');
+        setTrailerMuted(m => !m);
+        setTrailerPlay(true);
+        return;
+      } catch (e) {
+        console.error('postMessage mute toggle error', e);
+      }
+    }
+    // fallback: just toggle state
+    setTrailerMuted(m => !m);
+    setTrailerPlay(true);
+  };
+
+  const handleFullScreen = () => {
+    const iframe = playerRef.current;
+    if (!iframe) return;
+    if (iframe.requestFullscreen) iframe.requestFullscreen();
+    else if ((iframe as any).webkitRequestFullscreen) (iframe as any).webkitRequestFullscreen();
+    else if ((iframe as any).mozRequestFullScreen) (iframe as any).mozRequestFullScreen();
+    else if ((iframe as any).msRequestFullscreen) (iframe as any).msRequestFullscreen();
   };
 
   const handleToggleWatchlist = async () => {
@@ -121,7 +208,7 @@ const MovieModal = () => {
   };
 
   const formatCurrency = (amount?: number) => {
-    if (!amount) return 'N/A';
+    if (amount == null) return 'N/A';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -130,7 +217,7 @@ const MovieModal = () => {
   };
 
   const formatRuntime = (minutes?: number) => {
-    if (!minutes) return 'N/A';
+    if (minutes == null) return 'N/A';
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
@@ -143,6 +230,8 @@ const MovieModal = () => {
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <button className={styles.closeButton} onClick={closeModal}>×</button>
 
+        {/* Trailer Section moved into hero to avoid being covered by backdrop */}
+
         {loading ? (
           <div className={styles.loading}>
             <div className={styles.spinner}></div>
@@ -150,7 +239,51 @@ const MovieModal = () => {
         ) : data ? (
           <>
             <div className={styles.hero}>
-              <img src={data.backdrop} alt={data.title} className={styles.backdrop} />
+              <img src={data.backdrop} alt={data.title} className={`${styles.backdrop} ${trailer ? styles.backdropHidden : ''}`} />
+              {trailer && (
+                <div className={`${styles.trailerHero} ${trailerReady ? styles.trailerVisible : ''}`}>
+                  <iframe
+                    ref={playerRef}
+                    title={trailer.name}
+                    src={`https://www.youtube.com/embed/${trailer.key}?enablejsapi=1&autoplay=0&controls=0&rel=0&modestbranding=1`}
+                    width="100%"
+                    height="100%"
+                    frameBorder="0"
+                    allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                    onError={() => setTrailerError(true)}
+                    className={styles.trailerIframe}
+                    onLoad={() => {
+                      // when iframe loads, mute and (after 1s) play
+                      try {
+                        const win = playerRef.current?.contentWindow;
+                        if (win) {
+                          // ensure muted
+                          win.postMessage(JSON.stringify({ event: 'command', func: 'mute', args: [] }), '*');
+                          setTimeout(() => {
+                            win.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+                            setTrailerPlay(true);
+                            setTrailerReady(true);
+                          }, 1000);
+                        }
+                      } catch (e) {
+                        console.error('iframe onLoad postMessage error', e);
+                      }
+                    }}
+                  />
+                  <div className={styles.trailerHeroControls}>
+                      <button onClick={handleMuteToggle} className={styles.trailerMuteBtn} aria-label={trailerMuted ? 'Unmute' : 'Mute'}>
+                        {trailerMuted ? (
+                          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5 9v6h4l5 5V4L9 9H5z"/></svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5 9v6h4l5 5V4L9 9H5z"/><path d="M16.5 12c0-1.77-.77-3.37-2-4.47v8.94c1.23-1.1 2-2.7 2-4.47z"/></svg>
+                        )}
+                      </button>
+                    <button onClick={handleFullScreen} className={styles.trailerFullscreenBtn}>
+                      ⤢
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className={styles.heroGradient} />
               <div className={styles.heroContent}>
                 {data.tagline && <span className={styles.tagline}>{data.tagline}</span>}
@@ -228,7 +361,7 @@ const MovieModal = () => {
                     </div>
                   </div>
                 )}
-                {data.runtime && (
+                {typeof data.runtime === 'number' && data.runtime > 0 && (
                   <div className={styles.metaItem}>
                     <span className={styles.metaLabel}>Runtime</span>
                     <span className={styles.metaValue}>{formatRuntime(data.runtime)}</span>
@@ -240,7 +373,7 @@ const MovieModal = () => {
                     <span className={styles.metaValue}>{data.status}</span>
                   </div>
                 )}
-                {data.budget && data.budget > 0 && (
+                {typeof data.budget === 'number' && data.budget > 0 && (
                   <div className={styles.metaItem}>
                     <span className={styles.metaLabel}>Budget</span>
                     <span className={styles.metaValue}>{formatCurrency(data.budget)}</span>

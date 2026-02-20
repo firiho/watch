@@ -1,3 +1,73 @@
+/* ---- Trailer Section ---- */
+.trailerContainer {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto 24px auto;
+  position: relative;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.4);
+}
+
+.trailerControls {
+  display: flex;
+  gap: 12px;
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 2;
+}
+
+.trailerMuteBtn, .trailerFullscreenBtn {
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.trailerMuteBtn:hover, .trailerFullscreenBtn:hover {
+  background: var(--accent-color);
+  color: #000;
+}
+
+.trailerLoading, .trailerError {
+  width: 100%;
+  text-align: center;
+  color: #fff;
+  padding: 32px 0 16px 0;
+  font-size: 18px;
+}
+
+/* Trailer in hero */
+.trailerHero {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  background: #000;
+}
+
+.trailerIframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.trailerHeroControls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 3;
+  display: flex;
+  gap: 8px;
+}
 .overlay {
   position: fixed;
   top: 0;
@@ -75,6 +145,7 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: opacity 0.45s ease;
 }
 
 .heroGradient {
@@ -94,42 +165,84 @@
   z-index: 2;
 }
 
-.title {
-  font-size: 48px;
-  font-weight: 800;
-  color: white;
-  margin-bottom: 20px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+.trailerHero {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  background: #000;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  pointer-events: none; /* prevent youtube hover UI */
 }
 
-.tagline {
-  font-size: 18px;
-  color: var(--accent-color);
-  font-style: italic;
-  margin-bottom: 20px;
+.trailerVisible {
+  opacity: 1;
+}
+
+.trailerIframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
   display: block;
+  pointer-events: none; /* prevent native youtube hover controls from showing */
 }
 
-.actions {
+.backdropHidden {
+  opacity: 0;
+}
+
+.trailerHeroControls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 3;
   display: flex;
-  gap: 15px;
+  gap: 8px;
+  pointer-events: auto; /* allow buttons to be clickable */
 }
 
-.playButton {
-  display: none; /* Removed as requested */
+.trailerMuteBtn, .trailerFullscreenBtn {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+  cursor: pointer;
+  font-size: 18px;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.trailerMuteBtn:hover, .trailerFullscreenBtn:hover {
+  transform: translateY(-3px);
+  background: rgba(255,255,255,0.95);
+  color: #000;
 }
 
+.trailerMuteBtn svg, .trailerFullscreenBtn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
 .providerLink {
   background: white;
   color: black;
-  padding: 12px 24px;
+  padding: 10px 18px;
   font-weight: 700;
-  font-size: 15px;
-  display: flex;
+  font-size: 14px;
+  display: inline-flex;
   align-items: center;
-  gap: 15px;
-  border-radius: 4px;
-  transition: transform 0.2s ease;
+  gap: 10px;
+  border-radius: 6px;
+  transition: transform 0.12s ease;
+  max-width: max-content;
+  align-self: flex-start;
 }
 
 .providerLink:hover {
