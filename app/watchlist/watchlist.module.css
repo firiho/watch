@@ -14,6 +14,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .count {
@@ -26,6 +28,46 @@
   border-radius: 4px;
   white-space: nowrap;
   background: rgba(100, 255, 218, 0.05);
+}
+
+.filterGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.filterPill {
+  background: transparent;
+  border: 1px solid transparent;
+  color: rgba(255, 255, 255, 0.66);
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.filterPill:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.filterPill.active {
+  color: var(--text-white);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.filterPill:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .filterToggle {
@@ -51,6 +93,11 @@
   border-color: var(--accent-color);
   color: black;
   box-shadow: 0 0 15px rgba(100, 255, 218, 0.3);
+}
+
+.filterToggle:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .emptyState {
@@ -114,6 +161,11 @@
   .header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .headerActions {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .emptyTitle {

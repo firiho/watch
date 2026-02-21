@@ -14,7 +14,6 @@ interface HeroGalleryProps {
 const HeroGallery = ({ items }: HeroGalleryProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [adding, setAdding] = useState(false);
-  const [isBtnHovered, setIsBtnHovered] = useState(false);
   const { isInList, addItem, removeItem } = useWatchlist();
   const { user } = useAuth();
   const { openModal } = useModal();
@@ -84,11 +83,32 @@ const HeroGallery = ({ items }: HeroGalleryProps) => {
                   <button
                     className={`${styles.primaryButton} ${isInList(item.id) ? styles.inListBtn : ''}`}
                     onClick={() => handleToggleWatchlist(item)}
-                    onMouseEnter={() => setIsBtnHovered(true)}
-                    onMouseLeave={() => setIsBtnHovered(false)}
                     disabled={adding}
+                    aria-label={isInList(item.id) ? 'In My List. Click to remove.' : 'Add to My List'}
+                    title={isInList(item.id) ? 'In My List. Click to remove.' : 'Add to My List'}
                   >
-                    {adding ? 'Saving...' : (isInList(item.id) ? (isBtnHovered ? '− Remove from My List' : '✓ In My List') : '+ Add to My List')}
+                    {adding ? (
+                      <>
+                        <svg className={styles.buttonSpinner} viewBox="0 0 24 24" aria-hidden="true">
+                          <circle cx="12" cy="12" r="9" />
+                        </svg>
+                        <span className={styles.buttonLabel}>Saving...</span>
+                      </>
+                    ) : isInList(item.id) ? (
+                      <>
+                        <svg className={styles.buttonIcon} viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M5 12.5L10 17L19 8" />
+                        </svg>
+                        <span className={styles.buttonLabel}>In My List</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className={styles.buttonIcon} viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12 5V19M5 12H19" />
+                        </svg>
+                        <span className={styles.buttonLabel}>My List</span>
+                      </>
+                    )}
                   </button>
                 )}
               </div>

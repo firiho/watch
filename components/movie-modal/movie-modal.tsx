@@ -18,7 +18,6 @@ const MovieModal = () => {
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
   const [addingRem, setAddingRem] = useState(false);
-  const [isBtnHovered, setIsBtnHovered] = useState(false);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [activeSeason, setActiveSeason] = useState(1);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
@@ -271,15 +270,22 @@ const MovieModal = () => {
                     }}
                   />
                   <div className={styles.trailerHeroControls}>
-                      <button onClick={handleMuteToggle} className={styles.trailerMuteBtn} aria-label={trailerMuted ? 'Unmute' : 'Mute'}>
+                      <button
+                        onClick={handleMuteToggle}
+                        className={`${styles.trailerMuteBtn} ${!trailerMuted ? styles.active : ''}`}
+                        aria-label={trailerMuted ? 'Unmute trailer' : 'Mute trailer'}
+                        title={trailerMuted ? 'Unmute trailer' : 'Mute trailer'}
+                      >
                         {trailerMuted ? (
                           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5 9v6h4l5 5V4L9 9H5z"/></svg>
                         ) : (
                           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5 9v6h4l5 5V4L9 9H5z"/><path d="M16.5 12c0-1.77-.77-3.37-2-4.47v8.94c1.23-1.1 2-2.7 2-4.47z"/></svg>
                         )}
                       </button>
-                    <button onClick={handleFullScreen} className={styles.trailerFullscreenBtn}>
-                      ⤢
+                    <button onClick={handleFullScreen} className={styles.trailerFullscreenBtn} aria-label="Fullscreen trailer" title="Fullscreen trailer">
+                      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M7 3H3V7H5V5H7V3ZM21 3H17V5H19V7H21V3ZM3 17H5V19H7V21H3V17ZM19 19H17V21H21V17H19V19Z" />
+                      </svg>
                     </button>
                   </div>
                 </div>
@@ -308,11 +314,23 @@ const MovieModal = () => {
                     <button 
                       className={`${styles.watchlistButton} ${isInList(data.id) ? styles.inList : ''}`}
                       onClick={handleToggleWatchlist}
-                      onMouseEnter={() => setIsBtnHovered(true)}
-                      onMouseLeave={() => setIsBtnHovered(false)}
                       disabled={adding}
+                      aria-label={isInList(data.id) ? 'Remove from My List' : 'Add to My List'}
+                      title={isInList(data.id) ? 'Remove from My List' : 'Add to My List'}
                     >
-                      {adding ? '...' : (isInList(data.id) ? (isBtnHovered ? '− Remove from My List' : '✓ In My List') : '+ My List')}
+                      {adding ? (
+                        <svg className={styles.watchlistSpinner} viewBox="0 0 24 24" aria-hidden="true">
+                          <circle cx="12" cy="12" r="9" />
+                        </svg>
+                      ) : isInList(data.id) ? (
+                        <svg className={styles.watchlistIcon} viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M5 12.5L10 17L19 8" />
+                        </svg>
+                      ) : (
+                        <svg className={styles.watchlistIcon} viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12 5V19M5 12H19" />
+                        </svg>
+                      )}
                     </button>
                   )}
                   {user && isInList(data.id) && !data.isHD && (

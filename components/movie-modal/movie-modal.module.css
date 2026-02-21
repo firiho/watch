@@ -205,24 +205,41 @@
 }
 
 .trailerMuteBtn, .trailerFullscreenBtn {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  background: rgba(0,0,0,0.6);
+  border-radius: 999px;
+  background: rgba(8, 8, 8, 0.7);
   color: #fff;
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   cursor: pointer;
-  font-size: 18px;
-  transition: transform 0.12s ease, background 0.12s ease;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
 }
+
+.trailerMuteBtn.active {
+  background: rgba(100, 255, 218, 0.2);
+  border-color: rgba(100, 255, 218, 0.75);
+  color: #d2fff2;
+  box-shadow: 0 12px 24px rgba(100, 255, 218, 0.25);
+}
+
 .trailerMuteBtn:hover, .trailerFullscreenBtn:hover {
-  transform: translateY(-3px);
   background: rgba(255,255,255,0.95);
+  border-color: rgba(255, 255, 255, 0.9);
   color: #000;
+}
+
+.trailerMuteBtn:focus-visible, .trailerFullscreenBtn:focus-visible {
+  outline: 2px solid rgba(100, 255, 218, 0.95);
+  outline-offset: 2px;
 }
 
 .trailerMuteBtn svg, .trailerFullscreenBtn svg {
@@ -264,21 +281,83 @@
   border-radius: 4px;
 }
 
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+
 .watchlistButton {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  padding: 12px 30px;
-  font-weight: 600;
-  font-size: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(5px);
-  transition: all 0.2s ease;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: #ffffff;
+  color: #0a0a0a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.watchlistButton:hover:not(:disabled) {
+  background: #f0f0f0;
+  border-color: #f0f0f0;
+}
+
+.watchlistButton:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
 }
 
 .watchlistButton.inList {
-  background: rgba(100, 255, 218, 0.1);
-  border-color: var(--accent-color);
-  color: var(--accent-color);
+  background: rgba(20, 20, 20, 0.86);
+  border-color: rgba(100, 255, 218, 0.68);
+  color: #c7fff0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.watchlistButton.inList:hover:not(:disabled) {
+  background: rgba(28, 28, 28, 0.92);
+  border-color: rgba(100, 255, 218, 0.9);
+  color: #e2fff6;
+}
+
+.watchlistButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.watchlistIcon {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.watchlistSpinner {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 40 60;
+  animation: iconSpin 0.9s linear infinite;
 }
 
 /* Detail Content Section */
@@ -357,38 +436,59 @@
 }
 
 .bellButton {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
   width: 48px;
   height: 48px;
-  border-radius: 50%;
-  display: flex;
+  border-radius: 999px;
+  background: rgba(20, 20, 20, 0.76);
+  color: rgba(255, 255, 255, 0.9);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   cursor: pointer;
-  transition: all 0.2s ease;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.bellButton:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: scale(1.1);
+.bellButton:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(36, 36, 36, 0.86);
+}
+
+.bellButton:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
 }
 
 .bellButton.active {
   background: var(--accent-color);
-  border-color: rgba(0, 0, 0, 0.1);
-  color: black;
-  box-shadow: 0 0 20px rgba(100, 255, 218, 0.4);
+  border-color: rgba(100, 255, 218, 0.92);
+  color: #051a13;
+  box-shadow: 0 10px 28px rgba(100, 255, 218, 0.36);
 }
 
 .bellButton.active .bellIcon {
-  color: black;
+  color: #051a13;
 }
 
 .bellIcon {
-  font-size: 20px;
+  font-size: 0;
+  line-height: 1;
+}
+
+.bellButton svg {
+  width: 20px;
+  height: 20px;
+}
+
+.bellButton:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .metaGrid {
@@ -627,6 +727,10 @@
   to { transform: translateY(0); opacity: 1; }
 }
 
+@keyframes iconSpin {
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 1200px) {
   .modal {
     max-width: 90%;
@@ -651,6 +755,27 @@
   
   .title {
     font-size: 32px;
+  }
+
+  .heroContent {
+    left: 20px;
+    right: 20px;
+    bottom: 24px;
+  }
+
+  .actions {
+    gap: 10px;
+  }
+
+  .watchlistButton {
+    height: 44px;
+    width: 44px;
+    min-width: 44px;
+  }
+
+  .bellButton {
+    width: 44px;
+    height: 44px;
   }
   
   .content {
