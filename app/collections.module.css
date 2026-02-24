@@ -1,5 +1,5 @@
 .page {
-  padding: 140px 100px 80px;
+  padding: 140px clamp(18px, 5vw, 100px) 80px;
   min-height: 100vh;
 }
 
@@ -46,6 +46,13 @@
   grid-template-columns: repeat(5, 1fr);
   gap: 30px;
   margin-top: 10px;
+  align-items: start;
+}
+
+.grid > * {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
 }
 
 /* ---- Results count ---- */
@@ -97,6 +104,10 @@
     align-items: flex-start;
     gap: 25px;
   }
+
+  .filterWrapper {
+    width: 100%;
+  }
 }
 
 @media (max-width: 1200px) {
@@ -108,15 +119,48 @@
 
 @media (max-width: 768px) {
   .page {
-    padding: 120px 30px 60px;
+    padding: 110px 18px 56px;
   }
   
   .title {
     font-size: 36px;
   }
 
+  .description {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .resultsMeta {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
   .grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
+  }
+}
+
+@media (max-width: 520px) {
+  .discoverHeader {
+    margin-bottom: 32px;
+    gap: 18px;
+    padding-bottom: 24px;
+  }
+
+  .title {
+    font-size: 28px;
+    margin-bottom: 10px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .noResults {
+    padding: 48px 12px;
+    font-size: 14px;
   }
 }

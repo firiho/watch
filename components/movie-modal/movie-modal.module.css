@@ -816,6 +816,18 @@
     gap: 10px;
   }
 
+  .providerLink {
+    width: 100%;
+    max-width: none;
+    justify-content: space-between;
+    padding: 10px 14px;
+  }
+
+  .modalProviderLogos {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
   .watchlistButton {
     height: 44px;
     width: 44px;
@@ -830,6 +842,17 @@
   .content {
     grid-template-columns: 1fr;
     padding: 20px;
+    gap: 20px;
+  }
+
+  .metaRow {
+    gap: 10px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+
+  .overview {
+    font-size: 15px;
   }
   
   .episodeRow {
@@ -846,5 +869,130 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 2px;
+  }
+
+  .tvContainer {
+    padding: 0 20px 20px;
+  }
+
+  .castSection {
+    margin-top: 24px;
+    padding: 0 20px;
+  }
+}
+
+@media (max-width: 540px) {
+  .closeButton {
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+  }
+
+  .hero {
+    min-height: 240px;
+  }
+
+  .heroContent {
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+  }
+
+  .title {
+    font-size: 24px;
+    line-height: 1.05;
+    margin-bottom: 8px;
+  }
+
+  .tagline {
+    font-size: 11px;
+  }
+
+  .providerLink {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .providerText {
+    white-space: normal;
+  }
+
+  .content {
+    padding: 14px;
+  }
+
+  .releaseHistoryItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .seasonSelect {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .seasonSelect h3 {
+    font-size: 18px;
+  }
+
+  .seasonDropdown {
+    width: 100%;
+    font-size: 14px;
+    padding: 10px 36px 10px 12px;
+  }
+
+  .episodeRow {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .episodeNumber {
+    font-size: 14px;
+    text-align: left;
+  }
+
+  .episodeImage {
+    width: 100%;
+    max-width: none;
+  }
+
+  .episodeOverview {
+    font-size: 13px;
+  }
+
+  .tvContainer {
+    padding: 0 14px 14px;
+  }
+
+  .castSection {
+    padding: 0 14px;
+  }
+
+  .castCarousel {
+    gap: 14px;
+    padding-bottom: 12px;
+  }
+
+  .castMember {
+    flex-basis: 92px;
+  }
+
+  .castImageWrapper {
+    width: 92px;
+    height: 92px;
+    margin-bottom: 8px;
+  }
+
+  .castName {
+    font-size: 12px;
+  }
+
+  .castCharacter {
+    font-size: 11px;
   }
 }

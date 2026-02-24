@@ -19,6 +19,7 @@
   align-items: center;
   width: 100%;
   padding: 0 40px;
+  position: relative;
 }
 
 @media (max-width: 1080px) {
@@ -88,6 +89,48 @@
   margin-left: 15px;
 }
 
+.menuButton {
+  display: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.45);
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0;
+  z-index: 13;
+}
+
+.menuBar {
+  width: 18px;
+  height: 1.5px;
+  background: var(--text-primary);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.menuButtonOpen .menuBar:nth-child(1) {
+  transform: translateY(6.5px) rotate(45deg);
+}
+
+.menuButtonOpen .menuBar:nth-child(2) {
+  opacity: 0;
+}
+
+.menuButtonOpen .menuBar:nth-child(3) {
+  transform: translateY(-6.5px) rotate(-45deg);
+}
+
+.mobileBackdrop {
+  display: none;
+}
+
+.mobileMenu {
+  display: none;
+}
+
 .resumeButton {
   color: var(--accent-color);
   background-color: transparent;
@@ -110,5 +153,99 @@
 @media (max-width: 768px) {
   .links {
     display: none;
+  }
+
+  .logoText {
+    font-size: 20px;
+  }
+
+  .menuButton {
+    display: inline-flex;
+  }
+
+  .mobileBackdrop {
+    display: block;
+    position: fixed;
+    inset: 70px 0 0 0;
+    border: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 11;
+  }
+
+  .mobileMenu {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    position: fixed;
+    top: 70px;
+    right: 0;
+    width: min(92vw, 380px);
+    max-height: calc(100dvh - 70px);
+    overflow-y: auto;
+    padding: 18px;
+    background: rgba(8, 8, 8, 0.96);
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 12;
+  }
+
+  .mobileLinks {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .mobileLinks a {
+    display: block;
+    padding: 12px 10px;
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    border: 1px solid transparent;
+  }
+
+  .mobileLinks a:hover {
+    color: var(--accent-color);
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.06);
+  }
+
+  .mobileSearch {
+    width: 100%;
+  }
+
+  .mobileActions {
+    display: flex;
+  }
+
+  .mobileActions .resumeButton {
+    margin-left: 0;
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .nav {
+    padding: 0 16px;
+  }
+
+  .logoText {
+    font-size: 18px;
+  }
+
+  .logoLink {
+    gap: 8px;
+  }
+
+  .mobileMenu {
+    width: 100%;
+    padding: 16px;
+    border-left: 0;
   }
 }

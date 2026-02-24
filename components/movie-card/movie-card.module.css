@@ -1,6 +1,8 @@
 .cardWrapper {
   width: 250px;
-  height: 375px;
+  max-width: 100%;
+  aspect-ratio: 2 / 3;
+  height: auto;
   flex: 0 0 auto;
   position: relative;
 }
@@ -356,4 +358,58 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+  .simpleTitle {
+    padding: 10px;
+  }
+
+  .title {
+    font-size: 14px;
+  }
+
+  .providerOverlay {
+    padding: 5px 8px;
+    gap: 5px;
+    max-width: calc(100% - 20px);
+    overflow: hidden;
+  }
+
+  .providerLogos {
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .providerLogo {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+  }
+}
+
+@media (max-width: 520px) {
+  .card.expanded {
+    width: 100%;
+    left: 0;
+    top: 0;
+    border-radius: 8px;
+  }
+
+  .card.expanded::before {
+    border-radius: 8px;
+  }
+
+  .expanded .imageContainer {
+    border-radius: 8px 8px 0 0;
+  }
+
+  .expanded .cardContent {
+    padding: 12px 12px 14px;
+  }
+
+  .meta {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
 }

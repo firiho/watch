@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import styles from './navbar.module.css';
 import Logo from '../logo/logo';
 import Search from '../search/search';
@@ -9,7 +10,9 @@ import { useAuth } from '@/context/auth-context';
 
 const Navbar = () => {
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -21,6 +24,30 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    document.body.style.overflow = isMobileMenuOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
+
   return (
     <header 
       className={styles.header}
@@ -31,12 +58,24 @@ const Navbar = () => {
     >
       <nav className={styles.nav}>
         <div className={styles.logoContainer}>
-          <Link href="/" className={`${styles.logoLink} logo-link`}>
+          <Link href="/" className={`${styles.logoLink} logo-link`} onClick={closeMobileMenu}>
             <Logo />
             <span className={styles.logoText}>Watch</span>
           </Link>
         </div>
-        
+
+        <button
+          type="button"
+          className={`${styles.menuButton} ${isMobileMenuOpen ? styles.menuButtonOpen : ''}`}
+          aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={isMobileMenuOpen}
+          onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+        >
+          <span className={styles.menuBar} />
+          <span className={styles.menuBar} />
+          <span className={styles.menuBar} />
+        </button>
+
         <div className={styles.links}>
           <ol>
             <li>
@@ -66,6 +105,54 @@ const Navbar = () => {
             )}
           </div>
         </div>
+
+        {isMobileMenuOpen && (
+          <>
+            <button
+              type="button"
+              className={styles.mobileBackdrop}
+              aria-label="Close menu"
+              onClick={closeMobileMenu}
+            />
+            <div className={styles.mobileMenu}>
+              <ol className={styles.mobileLinks}>
+                <li>
+                  <Link href="/movies" onClick={closeMobileMenu}>Movies</Link>
+                </li>
+                <li>
+                  <Link href="/tv-shows" onClick={closeMobileMenu}>TV Shows</Link>
+                </li>
+                {user && (
+                  <li>
+                    <Link href="/watchlist" onClick={closeMobileMenu}>My List</Link>
+                  </li>
+                )}
+              </ol>
+
+              <div className={styles.mobileSearch}>
+                <Search />
+              </div>
+
+              <div className={styles.mobileActions}>
+                {user ? (
+                  <button
+                    onClick={() => {
+                      closeMobileMenu();
+                      signOut();
+                    }}
+                    className={styles.resumeButton}
+                  >
+                    Sign Out
+                  </button>
+                ) : (
+                  <Link href="/auth/signin" className={styles.resumeButton} onClick={closeMobileMenu}>
+                    Sign In
+                  </Link>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </nav>
     </header>
   );

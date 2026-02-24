@@ -109,6 +109,7 @@
 .heroButtons {
   display: flex;
   gap: 15px;
+  flex-wrap: wrap;
 }
 
 .primaryButton {
@@ -259,15 +260,78 @@
 }
 
 @media (max-width: 768px) {
+  .heroGallery {
+    height: 80svh;
+    min-height: 560px;
+  }
+
+  .heroContentWrapper {
+    padding: 0 16px;
+  }
+
   .indicators {
     left: 50%;
     transform: translateX(-50%);
     bottom: 30px;
+    right: auto;
+    gap: 14px;
+    padding: 10px 16px;
   }
+
   .heroTitle {
     font-size: 40px;
   }
+
+  .heroDescription {
+    font-size: 15px;
+    margin-bottom: 24px;
+    line-clamp: 4;
+    -webkit-line-clamp: 4;
+  }
+
   .heroContent {
     margin-top: 100px;
+  }
+
+  .primaryButton {
+    min-width: 0;
+    height: 46px;
+    padding: 0 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .heroGallery {
+    min-height: 520px;
+  }
+
+  .heroContent {
+    margin-top: 84px;
+  }
+
+  .heroTitle {
+    font-size: 30px;
+    margin: 10px 0 14px;
+  }
+
+  .heroDescription {
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 18px;
+  }
+
+  .heroButtons {
+    width: 100%;
+  }
+
+  .primaryButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .indicators {
+    bottom: 20px;
+    gap: 12px;
+    padding: 8px 14px;
   }
 }
