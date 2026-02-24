@@ -12,7 +12,7 @@ import styles from './movie-modal.module.css';
 const MovieModal = () => {
   const { activeItem, closeModal } = useModal();
   const { isInList, addItem, removeItem } = useWatchlist();
-  const { addReminder, removeReminder, hasReminder } = useReminders();
+  const { addReminder, removeReminder, hasReminder, ensureTelegramSetup } = useReminders();
   const { user } = useAuth();
   const [data, setData] = useState<ContentItem | null>(null);
   const [loading, setLoading] = useState(false);
@@ -190,6 +190,9 @@ const MovieModal = () => {
       if (hasReminder(data.id)) {
         await removeReminder(data.id);
       } else {
+        const telegramReady = await ensureTelegramSetup();
+        if (!telegramReady) return;
+
         await addReminder({
           id: data.id,
           name: data.title,

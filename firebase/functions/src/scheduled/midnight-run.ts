@@ -8,11 +8,6 @@ import { sendTelegramMessage } from '../services/telegram';
 
 // Define the secrets
 const tmdbSecret = defineSecret('TMDB_API_KEY');
-const telegramBotToken = defineSecret('TELEGRAM_BOT_TOKEN');
-const telegramChatId = defineSecret('TELEGRAM_CHAT_ID');
-
-// Specific user ID for Telegram notifications
-const TARGET_USER_ID = 'OYNKB7S6WqQvcbRt6uKSpIcelTt2';
 
 /**
  * Scheduled function that runs every day at midnight to check for reminders.
@@ -20,14 +15,13 @@ const TARGET_USER_ID = 'OYNKB7S6WqQvcbRt6uKSpIcelTt2';
  */
 export const midnightRun = functions.scheduler.onSchedule({
   schedule: '0 0 * * *', // Run at 00:00 every day
-  secrets: [tmdbSecret, telegramBotToken, telegramChatId],
+  secrets: [tmdbSecret],
   timeZone: 'UTC',
   memory: '256MiB',
 }, async (_event: any) => {
   const apiKey = tmdbSecret.value();
-  const botToken = telegramBotToken.value();
-  const chatId = telegramChatId.value();
   const db = getFirestore('watch-db-prod');
+  const telegramConfigCache = new Map<string, { botToken: string; chatId: string } | null>();
   console.log('Starting midnight reminder sync...');
 
   try {
@@ -81,11 +75,33 @@ export const midnightRun = functions.scheduler.onSchedule({
           await reminderDoc.ref.update(updateData);
           console.log(`Updated reminder ${type} ${id} for user ${userId}.`);
 
-          // Send Telegram message for specific user
-          if (userId === TARGET_USER_ID && notificationMessage) {
+          if (notificationMessage) {
             try {
-              await sendTelegramMessage(notificationMessage, botToken, chatId);
-              console.log(`Telegram notification sent for user ${userId}.`);
+              let telegramConfig = telegramConfigCache.get(userId);
+
+              if (telegramConfig === undefined) {
+                const telegramDoc = await db.doc(`users/${userId}/notifications/telegram`).get();
+                if (!telegramDoc.exists) {
+                  telegramConfig = null;
+                } else {
+                  const telegramData = telegramDoc.data() as any;
+                  telegramConfig = telegramData?.botToken && telegramData?.chatId
+                    ? {
+                        botToken: String(telegramData.botToken),
+                        chatId: String(telegramData.chatId),
+                      }
+                    : null;
+                }
+
+                telegramConfigCache.set(userId, telegramConfig);
+              }
+
+              if (!telegramConfig) {
+                console.log(`No Telegram config for user ${userId}; skipping notification.`);
+              } else {
+                await sendTelegramMessage(notificationMessage, telegramConfig.botToken, telegramConfig.chatId);
+                console.log(`Telegram notification sent for user ${userId}.`);
+              }
             } catch (telegramErr) {
               console.error(`Failed to send Telegram message for user ${userId}:`, telegramErr);
             }

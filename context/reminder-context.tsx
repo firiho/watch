@@ -1,9 +1,10 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { 
   collection, 
+  doc,
   onSnapshot,
   query
 } from 'firebase/firestore';
@@ -13,12 +14,18 @@ import {
   addReminder as addReminderToDb, 
   removeReminder as removeReminderFromDb 
 } from '@/lib/reminders';
+import {
+  TelegramSettings,
+  saveTelegramSettings,
+} from '@/lib/telegram-settings';
+import TelegramSetupModal from '@/components/telegram-setup-modal/telegram-setup-modal';
 
 interface ReminderContextType {
   reminders: Record<number, ReminderItem>;
   addReminder: (item: ReminderItem) => Promise<void>;
   removeReminder: (id: number) => Promise<void>;
   hasReminder: (id: number) => boolean;
+  ensureTelegramSetup: () => Promise<boolean>;
   loading: boolean;
 }
 
@@ -28,6 +35,10 @@ export const ReminderProvider = ({ children }: { children: React.ReactNode }) =>
   const { user } = useAuth();
   const [reminders, setReminders] = useState<Record<number, ReminderItem>>({});
   const [loading, setLoading] = useState(true);
+  const [telegramSettings, setTelegramSettings] = useState<TelegramSettings | null>(null);
+  const [telegramSetupOpen, setTelegramSetupOpen] = useState(false);
+  const [telegramSetupSaving, setTelegramSetupSaving] = useState(false);
+  const pendingTelegramSetupResolver = useRef<((result: boolean) => void) | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -45,6 +56,20 @@ export const ReminderProvider = ({ children }: { children: React.ReactNode }) =>
       });
       setReminders(items);
       setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setTelegramSettings(null);
+      return;
+    }
+
+    const telegramDocRef = doc(db, 'users', user.uid, 'notifications', 'telegram');
+    const unsubscribe = onSnapshot(telegramDocRef, (snapshot) => {
+      setTelegramSettings(snapshot.exists() ? (snapshot.data() as TelegramSettings) : null);
     });
 
     return () => unsubscribe();
@@ -72,9 +97,74 @@ export const ReminderProvider = ({ children }: { children: React.ReactNode }) =>
 
   const hasReminder = (id: number) => !!reminders[id];
 
+  const ensureTelegramSetup = async (): Promise<boolean> => {
+    if (!user) return false;
+
+    if (telegramSettings?.botToken && telegramSettings?.chatId) {
+      return true;
+    }
+
+    return new Promise<boolean>((resolve) => {
+      pendingTelegramSetupResolver.current = resolve;
+      setTelegramSetupOpen(true);
+    });
+  };
+
+  const resolveTelegramSetup = (result: boolean) => {
+    pendingTelegramSetupResolver.current?.(result);
+    pendingTelegramSetupResolver.current = null;
+  };
+
+  const handleCloseTelegramSetup = () => {
+    setTelegramSetupOpen(false);
+    resolveTelegramSetup(false);
+  };
+
+  const handleCompleteTelegramSetup = async (config: { botToken: string; chatId: string }) => {
+    try {
+      setTelegramSetupSaving(true);
+      await saveTelegramSettings({
+        botToken: config.botToken,
+        chatId: config.chatId,
+      });
+
+      try {
+        const welcomeRes = await fetch('/api/telegram/send-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: config.botToken,
+            chatId: config.chatId,
+            message: 'Welcome to Watch notifications. You will receive reminder updates here.',
+          }),
+        });
+        if (!welcomeRes.ok) {
+          const body = await welcomeRes.json().catch(() => ({}));
+          throw new Error(body?.error || 'Telegram welcome message failed');
+        }
+      } catch (welcomeErr) {
+        console.error('Failed to send Telegram welcome message:', welcomeErr);
+      }
+
+      setTelegramSetupOpen(false);
+      resolveTelegramSetup(true);
+    } catch (error) {
+      console.error('Error saving Telegram settings:', error);
+      throw error;
+    } finally {
+      setTelegramSetupSaving(false);
+    }
+  };
+
   return (
-    <ReminderContext.Provider value={{ reminders, addReminder, removeReminder, hasReminder, loading }}>
+    <ReminderContext.Provider value={{ reminders, addReminder, removeReminder, hasReminder, ensureTelegramSetup, loading }}>
       {children}
+      <TelegramSetupModal
+        open={telegramSetupOpen}
+        loading={telegramSetupSaving}
+        onClose={handleCloseTelegramSetup}
+        onComplete={handleCompleteTelegramSetup}
+      />
     </ReminderContext.Provider>
   );
 };

@@ -49,7 +49,7 @@ const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, desc
   const [lastEpisode, setLastEpisode] = useState<{ season: number; episode: number; name: string } | undefined>(undefined);
 
   const { isInList, addItem, removeItem } = useWatchlist();
-  const { reminders, addReminder, removeReminder, hasReminder } = useReminders();
+  const { reminders, addReminder, removeReminder, hasReminder, ensureTelegramSetup } = useReminders();
   const { user } = useAuth();
   const { openModal } = useModal();
   const inList = isInList(id);
@@ -115,6 +115,9 @@ const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, desc
     if (hasReminder(id)) {
       await removeReminder(id);
     } else {
+      const telegramReady = await ensureTelegramSetup();
+      if (!telegramReady) return;
+
       const reminderData: any = {
         id,
         name: title,

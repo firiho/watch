@@ -10,6 +10,9 @@ service cloud.firestore {
       match /reminders/{itemId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+      match /notifications/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
   
   	// Block all other access by default
