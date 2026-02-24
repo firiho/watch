@@ -150,6 +150,7 @@ export default function MyListPage() {
               id={item.id}
               title={item.title}
               year={item.release_date?.split('-')[0] || 'N/A'}
+              releaseDate={item.release_date || undefined}
               image={`https://image.tmdb.org/t/p/w500${item.poster_path}`}
               backdrop={item.backdrop_path ? `https://image.tmdb.org/t/p/w780${item.backdrop_path}` : undefined}
               rating={item.vote_average?.toFixed(1) || '0.0'}

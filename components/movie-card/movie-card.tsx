@@ -17,6 +17,7 @@ interface MovieCardProps {
   id: number;
   title: string;
   year: string;
+  releaseDate?: string;
   image: string;
   backdrop?: string;
   rating: string;
@@ -26,7 +27,18 @@ interface MovieCardProps {
   isHD?: boolean;
 }
 
-const MovieCard = ({ id, title, year, image, backdrop, rating, description, quality, mediaType = 'movie', isHD: initialIsHD }: MovieCardProps) => {
+const formatDisplayDate = (date?: string) => {
+  if (!date) return null;
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(parsed);
+};
+
+const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, description, quality, mediaType = 'movie', isHD: initialIsHD }: MovieCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [providers, setProviders] = useState<WatchProvider[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,6 +53,7 @@ const MovieCard = ({ id, title, year, image, backdrop, rating, description, qual
   const { user } = useAuth();
   const { openModal } = useModal();
   const inList = isInList(id);
+  const formattedReleaseDate = formatDisplayDate(releaseDate);
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;
@@ -196,6 +209,12 @@ const MovieCard = ({ id, title, year, image, backdrop, rating, description, qual
             <p className={styles.description}>{description}</p>
           )}
 
+          {formattedReleaseDate && (
+            <p className={styles.releaseDateLine}>
+              {mediaType === 'tv' ? 'First aired' : 'Released'} {formattedReleaseDate}
+            </p>
+          )}
+
           {user && (
             <button
               className={`${styles.addButton} ${inList ? styles.inList : ''}`}
@@ -219,6 +238,11 @@ const MovieCard = ({ id, title, year, image, backdrop, rating, description, qual
         {!isHovered && (
           <div className={styles.simpleTitle}>
             <h3 className={styles.title}>{title}</h3>
+            {formattedReleaseDate && (
+              <p className={styles.simpleReleaseDate}>
+                {formattedReleaseDate}
+              </p>
+            )}
           </div>
         )}
       </div>

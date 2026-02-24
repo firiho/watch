@@ -515,6 +515,34 @@
   color: white;
 }
 
+.releaseHistory {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.releaseHistoryItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.releaseHistoryLabel {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+
+.releaseHistoryDate {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .genres {
   display: flex;
   flex-wrap: wrap;
@@ -602,6 +630,27 @@
 .episodeInfo h4 {
   margin-bottom: 8px;
   font-size: 16px;
+}
+
+.episodeTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.episodeTitleRow h4 {
+  margin-bottom: 8px;
+  flex: 1;
+}
+
+.episodeDate {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.42);
+  font-family: var(--font-mono);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  margin-top: 1px;
 }
 
 .episodeOverview {
@@ -791,5 +840,11 @@
   
   .episodeImage {
     width: 100px;
+  }
+
+  .episodeTitleRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
   }
 }

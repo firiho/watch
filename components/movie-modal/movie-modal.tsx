@@ -222,6 +222,17 @@ const MovieModal = () => {
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
+  const formatDate = (date?: string) => {
+    if (!date) return 'N/A';
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return 'N/A';
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(parsed);
+  };
+
   if (!activeItem) return null;
 
   return (
@@ -385,10 +396,29 @@ const MovieModal = () => {
                     <span className={styles.metaValue}>{formatRuntime(data.runtime)}</span>
                   </div>
                 )}
+                {data.releaseDate && (
+                  <div className={styles.metaItem}>
+                    <span className={styles.metaLabel}>{data.mediaType === 'tv' ? 'First Air Date' : 'Release Date'}</span>
+                    <span className={styles.metaValue}>{formatDate(data.releaseDate)}</span>
+                  </div>
+                )}
                 {data.status && (
                   <div className={styles.metaItem}>
                     <span className={styles.metaLabel}>Status</span>
                     <span className={styles.metaValue}>{data.status}</span>
+                  </div>
+                )}
+                {data.mediaType === 'movie' && data.releaseHistory && data.releaseHistory.length > 0 && (
+                  <div className={styles.metaItem}>
+                    <span className={styles.metaLabel}>Release History</span>
+                    <div className={styles.releaseHistory}>
+                      {data.releaseHistory.map((entry) => (
+                        <div key={`${entry.type}-${entry.date}`} className={styles.releaseHistoryItem}>
+                          <span className={styles.releaseHistoryLabel}>{entry.label}</span>
+                          <span className={styles.releaseHistoryDate}>{formatDate(entry.date)}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {typeof data.budget === 'number' && data.budget > 0 && (
@@ -455,7 +485,14 @@ const MovieModal = () => {
                         className={styles.episodeImage} 
                       />
                       <div className={styles.episodeInfo}>
-                        <h4>{ep.name}</h4>
+                        <div className={styles.episodeTitleRow}>
+                          <h4>{ep.name}</h4>
+                          {ep.air_date && (
+                            <span className={styles.episodeDate} title={formatDate(ep.air_date)}>
+                              {formatDate(ep.air_date)}
+                            </span>
+                          )}
+                        </div>
                         <p className={styles.episodeOverview}>{ep.overview || "No overview available."}</p>
                       </div>
                     </div>

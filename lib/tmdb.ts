@@ -2,6 +2,7 @@ export interface ContentItem {
   id: number;
   title: string;
   year: string;
+  releaseDate?: string;
   rating: string;
   image: string;
   backdrop?: string;
@@ -19,6 +20,11 @@ export interface ContentItem {
   providerLink?: string;
   cast?: CastMember[];
   isHD?: boolean;
+  releaseHistory?: Array<{
+    type: number;
+    label: string;
+    date: string;
+  }>;
   lastEpisode?: {
     season: number;
     episode: number;
@@ -57,6 +63,27 @@ const TMDB_API_TOKEN = process.env.TMDB_API_TOKEN;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 
+function getReleaseHistoryFromUSReleaseDates(releaseDates: any[] = []) {
+  const targetTypes = [3, 4];
+  const history = targetTypes
+    .map((type) => {
+      const matches = releaseDates
+        .filter((rd: any) => rd.type === type && rd.release_date)
+        .sort((a: any, b: any) => new Date(a.release_date).getTime() - new Date(b.release_date).getTime());
+
+      if (!matches.length) return null;
+
+      return {
+        type,
+        label: type === 4 ? 'HD' : 'Theaters',
+        date: matches[0].release_date,
+      };
+    })
+    .filter(Boolean) as Array<{ type: number; label: string; date: string }>;
+
+  return history;
+}
+
 async function tmdbFetch(endpoint: string, options: RequestInit = {}) {
   const url = `${TMDB_BASE_URL}${endpoint}`;
   const response = await fetch(url, {
@@ -83,6 +110,7 @@ export async function getTrendingMovies(): Promise<ContentItem[]> {
       id: movie.id,
       title: movie.title,
       year: movie.release_date ? movie.release_date.split('-')[0] : 'N/A',
+      releaseDate: movie.release_date || undefined,
       rating: movie.vote_average.toFixed(1),
       image: `${IMAGE_BASE_URL}${movie.poster_path}`,
       backdrop: `https://image.tmdb.org/t/p/w780${movie.backdrop_path}`,
@@ -102,6 +130,7 @@ export async function getTrendingTVShows(): Promise<ContentItem[]> {
       id: tv.id,
       title: tv.name,
       year: tv.first_air_date ? tv.first_air_date.split('-')[0] : 'N/A',
+      releaseDate: tv.first_air_date || undefined,
       rating: tv.vote_average.toFixed(1),
       image: `${IMAGE_BASE_URL}${tv.poster_path}`,
       backdrop: `https://image.tmdb.org/t/p/w780${tv.backdrop_path}`,
@@ -121,6 +150,7 @@ export async function getFeaturedContent(): Promise<ContentItem[]> {
       id: item.id,
       title: item.title || item.name,
       year: (item.release_date || item.first_air_date)?.split('-')[0] || 'N/A',
+      releaseDate: item.release_date || item.first_air_date || undefined,
       rating: item.vote_average.toFixed(1),
       image: `https://image.tmdb.org/t/p/original${item.backdrop_path}`,
       description: item.overview,
@@ -231,6 +261,7 @@ export async function discoverContent(type: 'movie' | 'tv', filters: DiscoverFil
       id: item.id,
       title: item.title || item.name,
       year: (item.release_date || item.first_air_date)?.split('-')[0] || 'N/A',
+      releaseDate: item.release_date || item.first_air_date || undefined,
       rating: item.vote_average.toFixed(1),
       image: `${IMAGE_BASE_URL}${item.poster_path}`,
       backdrop: `https://image.tmdb.org/t/p/w780${item.backdrop_path}`,
@@ -250,11 +281,13 @@ export async function getMovieDetails(id: number): Promise<ContentItem | null> {
     const credits = data.credits;
     const releaseDates = data.release_dates?.results?.find((r: any) => r.iso_3166_1 === 'US')?.release_dates || [];
     const isHD = releaseDates.some((rd: any) => rd.type >= 4);
+    const releaseHistory = getReleaseHistoryFromUSReleaseDates(releaseDates);
     
     return {
       id: data.id,
       title: data.title,
       year: data.release_date ? data.release_date.split('-')[0] : 'N/A',
+      releaseDate: data.release_date || undefined,
       rating: data.vote_average.toFixed(1),
       image: `${IMAGE_BASE_URL}${data.poster_path}`,
       backdrop: `https://image.tmdb.org/t/p/original${data.backdrop_path}`,
@@ -278,6 +311,7 @@ export async function getMovieDetails(id: number): Promise<ContentItem | null> {
         profile_path: c.profile_path ? `https://image.tmdb.org/t/p/w200${c.profile_path}` : null,
       })),
       isHD,
+      releaseHistory,
     };
   } catch (error) {
     console.error(`Error fetching movie details for ${id}:`, error);
@@ -295,6 +329,7 @@ export async function getTVDetails(id: number): Promise<ContentItem | null> {
       id: data.id,
       title: data.name,
       year: data.first_air_date ? data.first_air_date.split('-')[0] : 'N/A',
+      releaseDate: data.first_air_date || undefined,
       rating: data.vote_average.toFixed(1),
       image: `${IMAGE_BASE_URL}${data.poster_path}`,
       backdrop: `https://image.tmdb.org/t/p/original${data.backdrop_path}`,
@@ -363,6 +398,7 @@ export async function searchMulti(query: string): Promise<ContentItem[]> {
         id: item.id,
         title: item.title || item.name,
         year: (item.release_date || item.first_air_date)?.split('-')[0] || 'N/A',
+        releaseDate: item.release_date || item.first_air_date || undefined,
         rating: item.vote_average?.toFixed(1) || '0.0',
         image: `${IMAGE_BASE_URL}${item.poster_path}`,
         backdrop: `https://image.tmdb.org/t/p/w780${item.backdrop_path}`,
