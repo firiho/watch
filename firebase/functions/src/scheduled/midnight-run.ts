@@ -10,11 +10,11 @@ import { sendTelegramMessage } from '../services/telegram';
 const tmdbSecret = defineSecret('TMDB_API_KEY');
 
 /**
- * Scheduled function that runs every day at midnight to check for reminders.
+ * Scheduled function that runs hourly to check for reminders.
  * It iterates through all users and their reminders to see if a notification criteria is met.
  */
-export const midnightRun = functions.scheduler.onSchedule({
-  schedule: '0 0 * * *', // Run at 00:00 every day
+export const reminders = functions.scheduler.onSchedule({
+  schedule: '0 * * * *', // Run at the top of every hour
   secrets: [tmdbSecret],
   timeZone: 'UTC',
   memory: '256MiB',
@@ -22,7 +22,7 @@ export const midnightRun = functions.scheduler.onSchedule({
   const apiKey = tmdbSecret.value();
   const db = getFirestore('watch-db-prod');
   const telegramConfigCache = new Map<string, { botToken: string; chatId: string } | null>();
-  console.log('Starting midnight reminder sync...');
+  console.log('Starting hourly reminder sync...');
 
   try {
     // Get all reminders across all users using collectionGroup
@@ -45,6 +45,7 @@ export const midnightRun = functions.scheduler.onSchedule({
 
       let updateData: any = null;
       let notificationMessage = '';
+      let shouldSendNotification = false;
 
       try {
         if (type === 'movie') {
@@ -72,7 +73,38 @@ export const midnightRun = functions.scheduler.onSchedule({
         }
 
         if (updateData) {
-          await reminderDoc.ref.update(updateData);
+          // Re-check and update atomically so overlapping scheduler runs don't send duplicate notifications.
+          shouldSendNotification = await db.runTransaction(async (tx) => {
+            const freshSnap = await tx.get(reminderDoc.ref);
+            if (!freshSnap.exists) return false;
+
+            const fresh = freshSnap.data() as any;
+
+            if (type === 'movie') {
+              if (fresh?.notified === true) return false;
+              tx.update(reminderDoc.ref, updateData);
+              return true;
+            }
+
+            if (type === 'tv') {
+              const currentSeason = Number(fresh?.season ?? 0);
+              const currentEpisode = Number(fresh?.episode ?? 0);
+              const nextSeason = Number(updateData.season ?? 0);
+              const nextEpisode = Number(updateData.episode ?? 0);
+              const isNewer = nextSeason > currentSeason || (nextSeason === currentSeason && nextEpisode > currentEpisode);
+
+              if (!isNewer) return false;
+              tx.update(reminderDoc.ref, updateData);
+              return true;
+            }
+
+            return false;
+          });
+
+          if (!shouldSendNotification) {
+            continue;
+          }
+
           console.log(`Updated reminder ${type} ${id} for user ${userId}.`);
 
           if (notificationMessage) {
@@ -112,8 +144,8 @@ export const midnightRun = functions.scheduler.onSchedule({
       }
     }
 
-    console.log('Midnight reminder sync completed successfully.');
+    console.log('Hourly reminder sync completed successfully.');
   } catch (error) {
-    console.error('Critical error in midnightRun:', error);
+    console.error('Critical error in reminders:', error);
   }
 });
