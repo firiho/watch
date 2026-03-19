@@ -236,7 +236,7 @@
 
 @media (max-width: 1080px) {
   .heroGallery {
-    height: 80vh;
+    height: 100vh;
   }
   .overlay {
     background: linear-gradient(
@@ -261,7 +261,7 @@
 
 @media (max-width: 768px) {
   .heroGallery {
-    height: 80svh;
+    height: 100svh;
     min-height: 560px;
   }
 
@@ -295,8 +295,9 @@
 
   .primaryButton {
     min-width: 0;
-    height: 46px;
-    padding: 0 14px;
+    height: 42px;
+    padding: 0 13px;
+    font-size: 13px;
   }
 }
 
@@ -321,11 +322,13 @@
   }
 
   .heroButtons {
-    width: 100%;
+    width: auto;
+    gap: 10px;
   }
 
   .primaryButton {
-    width: 100%;
+    width: auto;
+    min-width: 128px;
     justify-content: center;
   }
 

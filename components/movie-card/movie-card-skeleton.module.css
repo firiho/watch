@@ -9,6 +9,18 @@
   overflow: hidden;
 }
 
+@media (max-width: 768px) {
+  .skeleton {
+    width: clamp(148px, 40vw, 196px);
+  }
+}
+
+@media (max-width: 520px) {
+  .skeleton {
+    width: clamp(136px, 42vw, 172px);
+  }
+}
+
 .skeleton::after {
   content: "";
   position: absolute;

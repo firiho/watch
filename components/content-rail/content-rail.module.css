@@ -183,6 +183,7 @@
   }
 
   .sectionTitle {
+    font-size: clamp(20px, 6vw, 24px);
     margin-right: 0;
     white-space: normal;
     line-height: 1.1;
@@ -197,8 +198,8 @@
   }
 
   .rail {
-    gap: 16px;
-    padding: 20px 0 28px;
+    gap: 12px;
+    padding: 14px 0 20px;
     scroll-snap-type: x proximity;
     cursor: auto;
   }
@@ -219,7 +220,7 @@
   }
 
   .railSpacer {
-    flex-basis: 4px;
+    flex-basis: 2px;
   }
 
   .navArea {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import styles from './movie-card.module.css';
 import { useWatchlist } from '@/context/watchlist-context';
 import { useAuth } from '@/context/auth-context';
@@ -40,6 +40,7 @@ const formatDisplayDate = (date?: string) => {
 
 const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, description, quality, mediaType = 'movie', isHD: initialIsHD }: MovieCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [providers, setProviders] = useState<WatchProvider[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
@@ -81,6 +82,12 @@ const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, desc
       if (timeout) clearTimeout(timeout);
     };
   }, [isHovered, id, mediaType, hasFetched, loading]);
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    };
+  }, []);
 
   const handleToggleWatchlist = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -135,11 +142,24 @@ const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, desc
     }
   };
 
+  const handleMouseEnter = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHovered(true);
+    }, 300); // 300ms second delay before opening
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    setIsHovered(false);
+  };
+
   return (
     <div 
       className={styles.cardWrapper}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       onClick={() => openModal(id, mediaType)}
     >
       <div className={`${styles.card} ${isHovered ? styles.expanded : ''}`}>

@@ -13,12 +13,24 @@ export interface ContentItem {
   runtime?: number;
   status?: string;
   tagline?: string;
+  originalTitle?: string;
+  originalLanguage?: string;
+  spokenLanguages?: string[];
+  productionCountries?: string[];
+  homepage?: string;
+  imdbId?: string;
+  voteCount?: number;
+  popularity?: number;
   budget?: number;
   revenue?: number;
   seasons?: Season[];
   providers?: WatchProvider[];
   providerLink?: string;
   cast?: CastMember[];
+  directors?: PersonSummary[];
+  productionStudios?: string[];
+  creators?: string[];
+  networks?: string[];
   isHD?: boolean;
   releaseHistory?: Array<{
     type: number;
@@ -37,6 +49,11 @@ export interface CastMember {
   name: string;
   character: string;
   profile_path: string | null;
+}
+
+export interface PersonSummary {
+  id: number;
+  name: string;
 }
 
 export interface Season {
@@ -103,6 +120,26 @@ async function tmdbFetch(endpoint: string, options: RequestInit = {}) {
   return response.json();
 }
 
+export async function getPersonDetails(id: string | number) {
+  try {
+    const data = await tmdbFetch(`/person/${id}?language=en-US`);
+    return data;
+  } catch (error) {
+    console.error(`Error fetching details for person ${id}:`, error);
+    return null;
+  }
+}
+
+export async function getPersonCombinedCredits(id: string | number) {
+  try {
+    const data = await tmdbFetch(`/person/${id}/combined_credits?language=en-US`);
+    return data;
+  } catch (error) {
+    console.error(`Error fetching credits for person ${id}:`, error);
+    return null;
+  }
+}
+
 export async function getTrendingMovies(): Promise<ContentItem[]> {
   try {
     const data = await tmdbFetch('/trending/movie/week?language=en-US');
@@ -146,16 +183,33 @@ export async function getTrendingTVShows(): Promise<ContentItem[]> {
 export async function getFeaturedContent(): Promise<ContentItem[]> {
   try {
     const data = await tmdbFetch('/trending/all/day?language=en-US');
-    return data.results.slice(0, 5).map((item: any) => ({
-      id: item.id,
-      title: item.title || item.name,
-      year: (item.release_date || item.first_air_date)?.split('-')[0] || 'N/A',
-      releaseDate: item.release_date || item.first_air_date || undefined,
-      rating: item.vote_average.toFixed(1),
-      image: `https://image.tmdb.org/t/p/original${item.backdrop_path}`,
-      description: item.overview,
-      mediaType: item.media_type as 'movie' | 'tv',
-    }));
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    return data.results
+      .filter((item: any) => {
+        if (item.media_type !== 'movie' && item.media_type !== 'tv') return false;
+        if (!item.backdrop_path) return false;
+
+        const releaseDate = item.release_date || item.first_air_date;
+        if (!releaseDate) return false;
+
+        const parsedDate = new Date(releaseDate);
+        if (Number.isNaN(parsedDate.getTime())) return false;
+
+        return parsedDate <= today;
+      })
+      .slice(0, 5)
+      .map((item: any) => ({
+        id: item.id,
+        title: item.title || item.name,
+        year: (item.release_date || item.first_air_date)?.split('-')[0] || 'N/A',
+        releaseDate: item.release_date || item.first_air_date || undefined,
+        rating: item.vote_average.toFixed(1),
+        image: `https://image.tmdb.org/t/p/original${item.backdrop_path}`,
+        description: item.overview,
+        mediaType: item.media_type as 'movie' | 'tv',
+      }));
   } catch (error) {
     console.error('Error fetching featured content:', error);
     return [];
@@ -282,6 +336,16 @@ export async function getMovieDetails(id: number): Promise<ContentItem | null> {
     const releaseDates = data.release_dates?.results?.find((r: any) => r.iso_3166_1 === 'US')?.release_dates || [];
     const isHD = releaseDates.some((rd: any) => rd.type >= 4);
     const releaseHistory = getReleaseHistoryFromUSReleaseDates(releaseDates);
+    const directorMap = new Map<number, string>();
+    for (const member of credits?.crew || []) {
+      if (member?.job === 'Director' && typeof member?.name === 'string' && typeof member?.id === 'number') {
+        directorMap.set(member.id, member.name);
+      }
+    }
+    const directors = Array.from(directorMap.entries()).map(([directorId, directorName]) => ({
+      id: directorId,
+      name: directorName,
+    }));
     
     return {
       id: data.id,
@@ -296,6 +360,19 @@ export async function getMovieDetails(id: number): Promise<ContentItem | null> {
       genres: data.genres,
       runtime: data.runtime,
       status: data.status,
+      tagline: data.tagline,
+      originalTitle: data.original_title,
+      originalLanguage: data.original_language,
+      spokenLanguages: (data.spoken_languages || [])
+        .map((language: any) => language.english_name || language.name)
+        .filter(Boolean),
+      productionCountries: (data.production_countries || [])
+        .map((country: any) => country.name)
+        .filter(Boolean),
+      homepage: data.homepage || undefined,
+      imdbId: data.imdb_id || undefined,
+      voteCount: typeof data.vote_count === 'number' ? data.vote_count : undefined,
+      popularity: typeof data.popularity === 'number' ? data.popularity : undefined,
       budget: data.budget,
       revenue: data.revenue,
       providerLink: providersData?.link,
@@ -310,6 +387,11 @@ export async function getMovieDetails(id: number): Promise<ContentItem | null> {
         character: c.character,
         profile_path: c.profile_path ? `https://image.tmdb.org/t/p/w200${c.profile_path}` : null,
       })),
+      directors,
+      productionStudios: (data.production_companies || [])
+        .map((studio: any) => studio.name)
+        .filter(Boolean)
+        .slice(0, 5),
       isHD,
       releaseHistory,
     };
@@ -338,6 +420,17 @@ export async function getTVDetails(id: number): Promise<ContentItem | null> {
       genres: data.genres,
       status: data.status,
       tagline: data.tagline,
+      originalTitle: data.original_name,
+      originalLanguage: data.original_language,
+      spokenLanguages: (data.spoken_languages || [])
+        .map((language: any) => language.english_name || language.name)
+        .filter(Boolean),
+      productionCountries: (data.production_countries || [])
+        .map((country: any) => country.name)
+        .filter(Boolean),
+      homepage: data.homepage || undefined,
+      voteCount: typeof data.vote_count === 'number' ? data.vote_count : undefined,
+      popularity: typeof data.popularity === 'number' ? data.popularity : undefined,
       seasons: data.seasons.map((s: any) => ({
         id: s.id,
         name: s.name,
@@ -359,6 +452,18 @@ export async function getTVDetails(id: number): Promise<ContentItem | null> {
         character: c.character,
         profile_path: c.profile_path ? `https://image.tmdb.org/t/p/w200${c.profile_path}` : null,
       })),
+      creators: (data.created_by || [])
+        .map((creator: any) => creator.name)
+        .filter(Boolean)
+        .slice(0, 5),
+      productionStudios: (data.production_companies || [])
+        .map((studio: any) => studio.name)
+        .filter(Boolean)
+        .slice(0, 5),
+      networks: (data.networks || [])
+        .map((network: any) => network.name)
+        .filter(Boolean)
+        .slice(0, 5),
       lastEpisode: data.last_episode_to_air ? {
         season: data.last_episode_to_air.season_number,
         episode: data.last_episode_to_air.episode_number,

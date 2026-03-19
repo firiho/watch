@@ -361,6 +361,10 @@
 }
 
 @media (max-width: 768px) {
+  .cardWrapper {
+    width: clamp(148px, 40vw, 196px);
+  }
+
   .simpleTitle {
     padding: 10px;
   }
@@ -389,6 +393,10 @@
 }
 
 @media (max-width: 520px) {
+  .cardWrapper {
+    width: clamp(136px, 42vw, 172px);
+  }
+
   .card.expanded {
     width: 100%;
     left: 0;

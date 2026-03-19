@@ -19,8 +19,8 @@ const firaCode = Fira_Code({
 });
 
 export const metadata: Metadata = {
-  title: "Watch | Trending Movies & TV Shows",
-  description: "Showcase of new and trending movies and tv shows, built by Flambeau Iriho.",
+  title: "Watch",
+  description: "Discover and manage your movie watching addiction, built by Flambeau Iriho.",
   icons: {
     icon: [
       { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },

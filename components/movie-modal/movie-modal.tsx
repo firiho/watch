@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import { useModal } from '@/context/modal-context';
 import { useWatchlist } from '@/context/watchlist-context';
 import { useAuth } from '@/context/auth-context';
 import { useReminders } from '@/context/reminder-context';
 import { ContentItem, getTVSeasonDetails, Episode } from '@/lib/tmdb';
 import { selectBestYoutubeTrailer, TMDBVideo } from '@/lib/tmdb-video-util';
+import { getCheckpoint, setCheckpoint, Checkpoint } from '@/lib/checkpoints';
 import styles from './movie-modal.module.css';
 
 const MovieModal = () => {
@@ -21,6 +23,8 @@ const MovieModal = () => {
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [activeSeason, setActiveSeason] = useState(1);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
+  const [checkpoint, setCheckpointData] = useState<Checkpoint | null>(null);
+  const [settingCheckpoint, setSettingCheckpoint] = useState<string | null>(null);
 
   // Trailer state
   const [trailer, setTrailer] = useState<TMDBVideo | null>(null);
@@ -29,11 +33,15 @@ const MovieModal = () => {
   const [trailerMuted, setTrailerMuted] = useState(true);
   const [trailerPlay, setTrailerPlay] = useState(false);
   const [trailerError, setTrailerError] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const playerRef = useRef<HTMLIFrameElement | null>(null);
 
   useEffect(() => {
     if (activeItem) {
       fetchDetails();
+      if (activeItem.type === 'tv' && user) {
+        fetchUserCheckpoint();
+      }
     } else {
       setData(null);
       setEpisodes([]);
@@ -41,8 +49,32 @@ const MovieModal = () => {
       setTrailerPlay(false);
       setTrailerReady(false);
       setTrailerError(false);
+      setCheckpointData(null);
     }
-  }, [activeItem]);
+  }, [activeItem, user]);
+
+  const fetchUserCheckpoint = async () => {
+    if (!user || !activeItem) return;
+    try {
+      const cp = await getCheckpoint(user.uid, activeItem.id);
+      setCheckpointData(cp);
+    } catch(e) {
+      console.error('Error fetching checkpoint', e);
+    }
+  };
+
+  const handleSetCheckpoint = async (seasonNum: number, episodeNum: number) => {
+    if (!user || !activeItem) return;
+    setSettingCheckpoint(`${seasonNum}-${episodeNum}`);
+    try {
+      await setCheckpoint(user.uid, activeItem.id, seasonNum, episodeNum);
+      setCheckpointData({ seasonNumber: seasonNum, episodeNumber: episodeNum, timestamp: new Date().toISOString() });
+    } catch (error) {
+      console.error('Error setting checkpoint', error);
+    } finally {
+      setSettingCheckpoint(null);
+    }
+  };
   // Fetch trailer/teaser videos for movie or TV season
   const fetchTrailer = async (seasonOverride?: number) => {
     if (!activeItem) return;
@@ -151,12 +183,43 @@ const MovieModal = () => {
 
   const handleFullScreen = () => {
     const iframe = playerRef.current;
+    
+    if (isFullscreen) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+      setIsFullscreen(false);
+      return;
+    }
+
     if (!iframe) return;
-    if (iframe.requestFullscreen) iframe.requestFullscreen();
-    else if ((iframe as any).webkitRequestFullscreen) (iframe as any).webkitRequestFullscreen();
-    else if ((iframe as any).mozRequestFullScreen) (iframe as any).mozRequestFullScreen();
-    else if ((iframe as any).msRequestFullscreen) (iframe as any).msRequestFullscreen();
+
+    if (iframe.requestFullscreen) {
+      iframe.requestFullscreen().catch(() => {
+        setIsFullscreen(true);
+      });
+    } else if ((iframe as any).webkitRequestFullscreen) {
+      (iframe as any).webkitRequestFullscreen();
+    } else if ((iframe as any).mozRequestFullScreen) {
+      (iframe as any).mozRequestFullScreen();
+    } else if ((iframe as any).msRequestFullscreen) {
+      (iframe as any).msRequestFullscreen();
+    } else {
+      // Fallback for browsers that don't support iframe fullscreen (like iOS Safari)
+      setIsFullscreen(true);
+    }
   };
+
+  // Listen for native fullscreen exit
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setIsFullscreen(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   const handleToggleWatchlist = async () => {
     if (!user || !data || adding) return;
@@ -236,6 +299,11 @@ const MovieModal = () => {
     }).format(parsed);
   };
 
+  const formatList = (items?: string[]) => {
+    if (!items || items.length === 0) return null;
+    return items.join(', ');
+  };
+
   if (!activeItem) return null;
 
   return (
@@ -254,7 +322,7 @@ const MovieModal = () => {
             <div className={styles.hero}>
               <img src={data.backdrop} alt={data.title} className={`${styles.backdrop} ${trailer ? styles.backdropHidden : ''}`} />
               {trailer && (
-                <div className={`${styles.trailerHero} ${trailerReady ? styles.trailerVisible : ''}`}>
+                <div className={`${styles.trailerHero} ${trailerReady ? styles.trailerVisible : ''} ${isFullscreen ? styles.fullscreenTrailer : ''}`}>
                   <iframe
                     ref={playerRef}
                     title={trailer.name}
@@ -262,6 +330,7 @@ const MovieModal = () => {
                     width="100%"
                     height="100%"
                     frameBorder="0"
+                    allowFullScreen
                     allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
                     onError={() => setTrailerError(true)}
                     className={styles.trailerIframe}
@@ -296,10 +365,16 @@ const MovieModal = () => {
                           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5 9v6h4l5 5V4L9 9H5z"/><path d="M16.5 12c0-1.77-.77-3.37-2-4.47v8.94c1.23-1.1 2-2.7 2-4.47z"/></svg>
                         )}
                       </button>
-                    <button onClick={handleFullScreen} className={styles.trailerFullscreenBtn} aria-label="Fullscreen trailer" title="Fullscreen trailer">
-                      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M7 3H3V7H5V5H7V3ZM21 3H17V5H19V7H21V3ZM3 17H5V19H7V21H3V17ZM19 19H17V21H21V17H19V19Z" />
-                      </svg>
+                    <button onClick={handleFullScreen} className={styles.trailerFullscreenBtn} aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen trailer"} title={isFullscreen ? "Exit fullscreen" : "Fullscreen trailer"}>
+                      {isFullscreen ? (
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                          <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                          <path d="M7 3H3V7H5V5H7V3ZM21 3H17V5H19V7H21V3ZM3 17H5V19H7V21H3V17ZM19 19H17V21H21V17H19V19Z" />
+                        </svg>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -380,56 +455,98 @@ const MovieModal = () => {
                   )}
                 </div>
                 <p className={styles.overview}>{data.description}</p>
-              </div>
-
-              <div className={styles.metaGrid}>
-                {data.genres && (
-                  <div className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Genres</span>
-                    <div className={styles.genres}>
-                      {data.genres.map(g => (
-                        <span key={g.id} className={styles.genreTag}>{g.name}</span>
-                      ))}
+                <div className={styles.metaGrid}>
+                  {data.genres && (
+                    <div className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Genres</span>
+                      <span className={styles.metaValue}>{data.genres.map(g => g.name).join(', ')}</span>
                     </div>
-                  </div>
-                )}
-                {typeof data.runtime === 'number' && data.runtime > 0 && (
-                  <div className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Runtime</span>
-                    <span className={styles.metaValue}>{formatRuntime(data.runtime)}</span>
-                  </div>
-                )}
-                {data.releaseDate && (
-                  <div className={styles.metaItem}>
-                    <span className={styles.metaLabel}>{data.mediaType === 'tv' ? 'First Air Date' : 'Release Date'}</span>
-                    <span className={styles.metaValue}>{formatDate(data.releaseDate)}</span>
-                  </div>
-                )}
-                {data.status && (
-                  <div className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Status</span>
-                    <span className={styles.metaValue}>{data.status}</span>
-                  </div>
-                )}
-                {data.mediaType === 'movie' && data.releaseHistory && data.releaseHistory.length > 0 && (
-                  <div className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Release History</span>
-                    <div className={styles.releaseHistory}>
-                      {data.releaseHistory.map((entry) => (
-                        <div key={`${entry.type}-${entry.date}`} className={styles.releaseHistoryItem}>
-                          <span className={styles.releaseHistoryLabel}>{entry.label}</span>
-                          <span className={styles.releaseHistoryDate}>{formatDate(entry.date)}</span>
-                        </div>
-                      ))}
+                  )}
+                  {typeof data.runtime === 'number' && data.runtime > 0 && (
+                    <div className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Runtime</span>
+                      <span className={styles.metaValue}>{formatRuntime(data.runtime)}</span>
                     </div>
-                  </div>
-                )}
-                {typeof data.budget === 'number' && data.budget > 0 && (
-                  <div className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Budget</span>
-                    <span className={styles.metaValue}>{formatCurrency(data.budget)}</span>
-                  </div>
-                )}
+                  )}
+                  {data.releaseDate && (
+                    <div className={styles.metaItem}>
+                      <span className={styles.metaLabel}>{data.mediaType === 'tv' ? 'First Air Date' : 'Release Date'}</span>
+                      <span className={styles.metaValue}>{formatDate(data.releaseDate)}</span>
+                    </div>
+                  )}
+                  {data.status && (
+                    <div className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Status</span>
+                      <span className={styles.metaValue}>{data.status}</span>
+                    </div>
+                  )}
+                  {data.mediaType === 'movie' && data.releaseHistory && data.releaseHistory.length > 0 && (
+                    <div className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Release Schedule</span>
+                      <ul className={styles.releaseScheduleList}>
+                        {data.releaseHistory.map((entry) => (
+                          <li key={`${entry.type}-${entry.date}`} className={styles.releaseScheduleItem}>
+                            <span className={styles.releaseScheduleTag}>{entry.label}</span>
+                            <span className={styles.releaseScheduleDate}>{formatDate(entry.date)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {data.mediaType === 'movie' && data.directors && data.directors.length > 0 && (
+                    <div className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Director{data.directors && data.directors.length > 1 ? 's' : ''}</span>
+                      <span className={styles.metaValue}>
+                        <span className={styles.directorLinks}>
+                          {data.directors?.map((director, index) => (
+                            <span key={director.id}>
+                              <Link href={`/star/${director.id}`} className={styles.directorLink} onClick={closeModal}>
+                                {director.name}
+                              </Link>
+                              {index < (data.directors?.length || 0) - 1 ? ', ' : ''}
+                            </span>
+                          ))}
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                  {data.mediaType === 'tv' && formatList(data.creators) && (
+                    <div className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Creator{data.creators && data.creators.length > 1 ? 's' : ''}</span>
+                      <span className={styles.metaValue}>{formatList(data.creators)}</span>
+                    </div>
+                  )}
+                  {formatList(data.productionStudios) && (
+                    <div className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Production Studios</span>
+                      <span className={styles.metaValue}>{formatList(data.productionStudios)}</span>
+                    </div>
+                  )}
+                  {formatList(data.productionCountries) && (
+                    <div className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Production Countries</span>
+                      <span className={styles.metaValue}>{formatList(data.productionCountries)}</span>
+                    </div>
+                  )}
+                  {formatList(data.spokenLanguages) && (
+                    <div className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Spoken Languages</span>
+                      <span className={styles.metaValue}>{formatList(data.spokenLanguages)}</span>
+                    </div>
+                  )}
+                  {typeof data.budget === 'number' && data.budget > 0 && (
+                    <div className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Budget</span>
+                      <span className={styles.metaValue}>{formatCurrency(data.budget)}</span>
+                    </div>
+                  )}
+                  {typeof data.revenue === 'number' && data.revenue > 0 && (
+                    <div className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Revenue</span>
+                      <span className={styles.metaValue}>{formatCurrency(data.revenue)}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -438,7 +555,7 @@ const MovieModal = () => {
                 <h3 className={styles.castTitle}>Cast</h3>
                 <div className={styles.castCarousel}>
                   {data.cast.map(member => (
-                    <div key={member.id} className={styles.castMember}>
+                    <Link href={`/star/${member.id}`} key={member.id} className={styles.castMember} onClick={closeModal} style={{ textDecoration: 'none' }}>
                       <div className={styles.castImageWrapper}>
                         {member.profile_path ? (
                           <img src={member.profile_path} alt={member.name} className={styles.castImage} />
@@ -448,7 +565,7 @@ const MovieModal = () => {
                       </div>
                       <span className={styles.castName}>{member.name}</span>
                       <span className={styles.castCharacter}>{member.character}</span>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -489,11 +606,37 @@ const MovieModal = () => {
                       />
                       <div className={styles.episodeInfo}>
                         <div className={styles.episodeTitleRow}>
-                          <h4>{ep.name}</h4>
-                          {ep.air_date && (
-                            <span className={styles.episodeDate} title={formatDate(ep.air_date)}>
-                              {formatDate(ep.air_date)}
-                            </span>
+                          <div className={styles.episodeTitleLeft}>
+                            <h4>{ep.name}</h4>
+                            <div className={styles.episodeMetaLine}>
+                              <span className={styles.episodeIndex}>E{ep.episode_number}</span>
+                              {ep.air_date && (
+                                <span className={styles.episodeDate} title={formatDate(ep.air_date)}>
+                                  {formatDate(ep.air_date)}
+                                </span>
+                              )}
+                              {typeof ep.runtime === 'number' && ep.runtime > 0 && (
+                                <span className={styles.episodeRuntime}>{formatRuntime(ep.runtime)}</span>
+                              )}
+                            </div>
+                          </div>
+                          {user && (
+                            <button
+                              className={`${styles.checkpointBtn} ${checkpoint?.seasonNumber === activeSeason && checkpoint?.episodeNumber === ep.episode_number ? styles.isCheckpoint : ''}`}
+                              onClick={() => handleSetCheckpoint(activeSeason, ep.episode_number)}
+                              title="Mark as Current Checkpoint"
+                              disabled={settingCheckpoint === `${activeSeason}-${ep.episode_number}`}
+                            >
+                              {settingCheckpoint === `${activeSeason}-${ep.episode_number}` ? (
+                                <svg className={styles.watchlistSpinner} viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="12" r="10"></circle>
+                                </svg>
+                              ) : (
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                                </svg>
+                              )}
+                            </button>
                           )}
                         </div>
                         <p className={styles.episodeOverview}>{ep.overview || "No overview available."}</p>
