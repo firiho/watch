@@ -14,7 +14,7 @@ import styles from './movie-modal.module.css';
 const MovieModal = () => {
   const { activeItem, closeModal } = useModal();
   const { isInList, addItem, removeItem } = useWatchlist();
-  const { addReminder, removeReminder, hasReminder, ensureTelegramSetup } = useReminders();
+  const { addReminder, removeReminder, hasReminder, ensureTelegramSetup, requestTVReminder } = useReminders();
   const { user } = useAuth();
   const [data, setData] = useState<ContentItem | null>(null);
   const [loading, setLoading] = useState(false);
@@ -252,19 +252,23 @@ const MovieModal = () => {
     try {
       if (hasReminder(data.id)) {
         await removeReminder(data.id);
-      } else {
-        const telegramReady = await ensureTelegramSetup();
-        if (!telegramReady) return;
-
-        await addReminder({
-          id: data.id,
-          name: data.title,
-          type: data.mediaType,
-          notified: false,
-          season: data.lastEpisode?.season,
-          episode: data.lastEpisode?.episode
-        });
+        return;
       }
+
+      if (data.mediaType === 'tv') {
+        await requestTVReminder({ id: data.id, title: data.title, preloaded: data });
+        return;
+      }
+
+      const telegramReady = await ensureTelegramSetup();
+      if (!telegramReady) return;
+
+      await addReminder({
+        id: data.id,
+        name: data.title,
+        type: 'movie',
+        notified: false,
+      });
     } catch (error) {
       console.error('Error toggling reminder:', error);
     } finally {

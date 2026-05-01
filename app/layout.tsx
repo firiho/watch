@@ -46,6 +46,7 @@ import { WatchlistProvider } from "@/context/watchlist-context";
 import { ReminderProvider } from "@/context/reminder-context";
 import { ModalProvider } from "@/context/modal-context";
 import MovieModal from "@/components/movie-modal/movie-modal";
+import InboxPopup from "@/components/inbox-popup/inbox-popup";
 
 export default function RootLayout({
   children,
@@ -63,6 +64,7 @@ export default function RootLayout({
                 <SideLines />
                 {children}
                 <MovieModal />
+                <InboxPopup />
                 <Footer />
               </ModalProvider>
             </ReminderProvider>

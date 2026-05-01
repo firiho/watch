@@ -47,10 +47,9 @@ const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, desc
   const [adding, setAdding] = useState(false);
   const [isBtnHovered, setIsBtnHovered] = useState(false);
   const [isHD, setIsHD] = useState(initialIsHD);
-  const [lastEpisode, setLastEpisode] = useState<{ season: number; episode: number; name: string } | undefined>(undefined);
 
   const { isInList, addItem, removeItem } = useWatchlist();
-  const { reminders, addReminder, removeReminder, hasReminder, ensureTelegramSetup } = useReminders();
+  const { reminders, addReminder, removeReminder, hasReminder, ensureTelegramSetup, requestTVReminder } = useReminders();
   const { user } = useAuth();
   const { openModal } = useModal();
   const inList = isInList(id);
@@ -68,7 +67,6 @@ const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, desc
           const data = await response.json();
           setProviders(data.providers || []);
           if (data.isHD !== undefined) setIsHD(data.isHD);
-          if (data.lastEpisode) setLastEpisode(data.lastEpisode);
         } catch (error) {
           console.error('Failed to fetch providers:', error);
         } finally {
@@ -121,25 +119,23 @@ const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, desc
 
     if (hasReminder(id)) {
       await removeReminder(id);
-    } else {
-      const telegramReady = await ensureTelegramSetup();
-      if (!telegramReady) return;
-
-      const reminderData: any = {
-        id,
-        name: title,
-        type: mediaType,
-      };
-
-      if (mediaType === 'movie') {
-        reminderData.notified = false;
-      } else {
-        reminderData.season = lastEpisode?.season;
-        reminderData.episode = lastEpisode?.episode;
-      }
-
-      await addReminder(reminderData);
+      return;
     }
+
+    if (mediaType === 'tv') {
+      await requestTVReminder({ id, title });
+      return;
+    }
+
+    const telegramReady = await ensureTelegramSetup();
+    if (!telegramReady) return;
+
+    await addReminder({
+      id,
+      name: title,
+      type: 'movie',
+      notified: false,
+    });
   };
 
   const handleMouseEnter = () => {

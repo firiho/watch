@@ -2,23 +2,31 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { db } from '@/lib/firebase';
-import { 
-  collection, 
+import {
+  collection,
   doc,
   onSnapshot,
   query
 } from 'firebase/firestore';
 import { useAuth } from './auth-context';
-import { 
-  ReminderItem, 
-  addReminder as addReminderToDb, 
-  removeReminder as removeReminderFromDb 
+import {
+  ReminderItem,
+  addReminder as addReminderToDb,
+  removeReminder as removeReminderFromDb
 } from '@/lib/reminders';
 import {
   TelegramSettings,
   saveTelegramSettings,
 } from '@/lib/telegram-settings';
 import TelegramSetupModal from '@/components/telegram-setup-modal/telegram-setup-modal';
+import ReminderEpisodePicker, { ReminderTarget } from '@/components/reminder-episode-picker/reminder-episode-picker';
+import { ContentItem } from '@/lib/tmdb';
+
+interface RequestTVReminderOpts {
+  id: number;
+  title: string;
+  preloaded?: ContentItem | null;
+}
 
 interface ReminderContextType {
   reminders: Record<number, ReminderItem>;
@@ -26,6 +34,7 @@ interface ReminderContextType {
   removeReminder: (id: number) => Promise<void>;
   hasReminder: (id: number) => boolean;
   ensureTelegramSetup: () => Promise<boolean>;
+  requestTVReminder: (opts: RequestTVReminderOpts) => Promise<void>;
   loading: boolean;
 }
 
@@ -40,6 +49,10 @@ export const ReminderProvider = ({ children }: { children: React.ReactNode }) =>
   const [telegramSetupSaving, setTelegramSetupSaving] = useState(false);
   const pendingTelegramSetupResolver = useRef<((result: boolean) => void) | null>(null);
 
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerShow, setPickerShow] = useState<ContentItem | null>(null);
+  const [pickerSaving, setPickerSaving] = useState(false);
+
   useEffect(() => {
     if (!user) {
       setReminders({});
@@ -47,7 +60,6 @@ export const ReminderProvider = ({ children }: { children: React.ReactNode }) =>
       return;
     }
 
-    // Path updated to users/{userId}/reminders
     const q = query(collection(db, 'users', user.uid, 'reminders'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const items: Record<number, ReminderItem> = {};
@@ -156,14 +168,85 @@ export const ReminderProvider = ({ children }: { children: React.ReactNode }) =>
     }
   };
 
+  const requestTVReminder = async ({ id, title, preloaded }: RequestTVReminderOpts) => {
+    if (!user) return;
+    if (reminders[id]) return;
+
+    const telegramReady = await ensureTelegramSetup();
+    if (!telegramReady) return;
+
+    let show = preloaded ?? null;
+    if (!show) {
+      try {
+        const res = await fetch(`/api/details?id=${id}&type=tv`);
+        if (!res.ok) throw new Error('Failed to fetch show details');
+        show = (await res.json()) as ContentItem;
+      } catch (error) {
+        console.error('Error loading show details for reminder:', error);
+        return;
+      }
+    }
+
+    if (!show.title) show.title = title;
+    setPickerShow(show);
+    setPickerOpen(true);
+  };
+
+  const handlePickerClose = () => {
+    if (pickerSaving) return;
+    setPickerOpen(false);
+    setPickerShow(null);
+  };
+
+  const handlePickerConfirm = async (target: ReminderTarget) => {
+    if (!pickerShow) return;
+    setPickerSaving(true);
+    try {
+      let savedSeason: number | undefined;
+      let savedEpisode: number | undefined;
+
+      if (target.mode === 'next') {
+        savedSeason = pickerShow.lastEpisode?.season;
+        savedEpisode = pickerShow.lastEpisode?.episode;
+      } else if (target.episode > 1) {
+        savedSeason = target.season;
+        savedEpisode = target.episode - 1;
+      } else {
+        savedSeason = Math.max(1, target.season - 1);
+        savedEpisode = 9999;
+      }
+
+      await addReminderToDb({
+        id: pickerShow.id,
+        name: pickerShow.title,
+        type: 'tv',
+        season: savedSeason,
+        episode: savedEpisode,
+      });
+      setPickerOpen(false);
+      setPickerShow(null);
+    } catch (error) {
+      console.error('Error saving TV reminder:', error);
+    } finally {
+      setPickerSaving(false);
+    }
+  };
+
   return (
-    <ReminderContext.Provider value={{ reminders, addReminder, removeReminder, hasReminder, ensureTelegramSetup, loading }}>
+    <ReminderContext.Provider value={{ reminders, addReminder, removeReminder, hasReminder, ensureTelegramSetup, requestTVReminder, loading }}>
       {children}
       <TelegramSetupModal
         open={telegramSetupOpen}
         loading={telegramSetupSaving}
         onClose={handleCloseTelegramSetup}
         onComplete={handleCompleteTelegramSetup}
+      />
+      <ReminderEpisodePicker
+        open={pickerOpen}
+        show={pickerShow}
+        saving={pickerSaving}
+        onClose={handlePickerClose}
+        onConfirm={handlePickerConfirm}
       />
     </ReminderContext.Provider>
   );

@@ -1,0 +1,232 @@
+.stack {
+  position: fixed;
+  top: 76px;
+  right: 16px;
+  z-index: 1900;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 340px;
+  width: calc(100vw - 32px);
+  pointer-events: none;
+}
+
+.stack > * {
+  pointer-events: auto;
+}
+
+.card {
+  background: rgba(14, 14, 14, 0.96);
+  border: 1px solid rgba(100, 255, 218, 0.28);
+  border-radius: 12px;
+  padding: 14px 14px 12px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: slideIn 0.25s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.kicker {
+  font-size: 10.5px;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: rgba(100, 255, 218, 0.85);
+  font-weight: 700;
+}
+
+.cardTitle {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.iconBtn {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.iconBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.cardBody {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.epBadge {
+  font-family: var(--font-mono, monospace);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(100, 255, 218, 0.16);
+  border: 1px solid rgba(100, 255, 218, 0.45);
+  color: #d8fff5;
+  flex-shrink: 0;
+}
+
+.bodyText {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.cardActions {
+  display: flex;
+  gap: 8px;
+}
+
+.actionBtn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.actionBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.actionBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.primary {
+  background: rgba(100, 255, 218, 0.18);
+  border-color: rgba(100, 255, 218, 0.55);
+  color: #d8fff5;
+}
+
+.primary:hover:not(:disabled) {
+  background: rgba(100, 255, 218, 0.28);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(14, 14, 14, 0.96);
+  border: 1px solid rgba(100, 255, 218, 0.4);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  align-self: flex-end;
+  max-width: 100%;
+  animation: slideIn 0.2s ease-out;
+}
+
+.pill:hover {
+  background: rgba(20, 20, 20, 0.98);
+}
+
+.pillDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(100, 255, 218, 0.95);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4px rgba(100, 255, 218, 0.18);
+}
+
+.pillText {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pillName {
+  color: rgba(255, 255, 255, 0.92);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.pillSep {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.pillEp {
+  font-family: var(--font-mono, monospace);
+  color: #d8fff5;
+  font-size: 11.5px;
+}
+
+.pillChev {
+  color: rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .stack {
+    top: 68px;
+    right: 12px;
+    max-width: calc(100vw - 24px);
+  }
+
+  .card {
+    padding: 12px 12px 10px;
+  }
+}

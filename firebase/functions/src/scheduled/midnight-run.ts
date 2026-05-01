@@ -73,6 +73,9 @@ export const reminders = functions.scheduler.onSchedule({
         }
 
         if (updateData) {
+          // Pre-allocate an inbox doc ref so the inbox write happens atomically with the reminder update.
+          const inboxRef = type === 'tv' ? db.collection(`users/${userId}/inbox`).doc() : null;
+
           // Re-check and update atomically so overlapping scheduler runs don't send duplicate notifications.
           shouldSendNotification = await db.runTransaction(async (tx) => {
             const freshSnap = await tx.get(reminderDoc.ref);
@@ -95,6 +98,17 @@ export const reminders = functions.scheduler.onSchedule({
 
               if (!isNewer) return false;
               tx.update(reminderDoc.ref, updateData);
+              if (inboxRef) {
+                tx.set(inboxRef, {
+                  reminderId: id,
+                  type: 'tv',
+                  name,
+                  season: nextSeason,
+                  episode: nextEpisode,
+                  deliveredAt: admin.firestore.FieldValue.serverTimestamp(),
+                  status: 'unread',
+                });
+              }
               return true;
             }
 

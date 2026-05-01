@@ -140,20 +140,31 @@ export async function getPersonCombinedCredits(id: string | number) {
   }
 }
 
+function isReleased(dateStr?: string): boolean {
+  if (!dateStr) return false;
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return false;
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  return parsed <= today;
+}
+
 export async function getTrendingMovies(): Promise<ContentItem[]> {
   try {
     const data = await tmdbFetch('/trending/movie/week?language=en-US');
-    return data.results.map((movie: any) => ({
-      id: movie.id,
-      title: movie.title,
-      year: movie.release_date ? movie.release_date.split('-')[0] : 'N/A',
-      releaseDate: movie.release_date || undefined,
-      rating: movie.vote_average.toFixed(1),
-      image: `${IMAGE_BASE_URL}${movie.poster_path}`,
-      backdrop: `https://image.tmdb.org/t/p/w780${movie.backdrop_path}`,
-      description: movie.overview,
-      mediaType: 'movie',
-    }));
+    return data.results
+      .filter((movie: any) => isReleased(movie.release_date))
+      .map((movie: any) => ({
+        id: movie.id,
+        title: movie.title,
+        year: movie.release_date ? movie.release_date.split('-')[0] : 'N/A',
+        releaseDate: movie.release_date || undefined,
+        rating: movie.vote_average.toFixed(1),
+        image: `${IMAGE_BASE_URL}${movie.poster_path}`,
+        backdrop: `https://image.tmdb.org/t/p/w780${movie.backdrop_path}`,
+        description: movie.overview,
+        mediaType: 'movie',
+      }));
   } catch (error) {
     console.error('Error fetching trending movies:', error);
     return [];
@@ -163,17 +174,19 @@ export async function getTrendingMovies(): Promise<ContentItem[]> {
 export async function getTrendingTVShows(): Promise<ContentItem[]> {
   try {
     const data = await tmdbFetch('/trending/tv/day?language=en-US');
-    return data.results.map((tv: any) => ({
-      id: tv.id,
-      title: tv.name,
-      year: tv.first_air_date ? tv.first_air_date.split('-')[0] : 'N/A',
-      releaseDate: tv.first_air_date || undefined,
-      rating: tv.vote_average.toFixed(1),
-      image: `${IMAGE_BASE_URL}${tv.poster_path}`,
-      backdrop: `https://image.tmdb.org/t/p/w780${tv.backdrop_path}`,
-      description: tv.overview,
-      mediaType: 'tv',
-    }));
+    return data.results
+      .filter((tv: any) => isReleased(tv.first_air_date))
+      .map((tv: any) => ({
+        id: tv.id,
+        title: tv.name,
+        year: tv.first_air_date ? tv.first_air_date.split('-')[0] : 'N/A',
+        releaseDate: tv.first_air_date || undefined,
+        rating: tv.vote_average.toFixed(1),
+        image: `${IMAGE_BASE_URL}${tv.poster_path}`,
+        backdrop: `https://image.tmdb.org/t/p/w780${tv.backdrop_path}`,
+        description: tv.overview,
+        mediaType: 'tv',
+      }));
   } catch (error) {
     console.error('Error fetching popular TV shows:', error);
     return [];
