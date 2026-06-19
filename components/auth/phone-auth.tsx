@@ -100,6 +100,19 @@ export default function PhoneAuth() {
     }
   };
 
+  // Go back to the phone step with a clean slate so the user actually enters a
+  // NEW number — clear the old digits, the spent OTP/confirmation, and the
+  // used-up reCAPTCHA verifier. Without this, the old number stays pre-filled
+  // and the next "Receive Code" just re-texts the previous number.
+  const handleChangeNumber = () => {
+    resetRecaptcha();
+    setPhoneNumber('');
+    setOtp('');
+    setConfirmationResult(null);
+    setError(null);
+    setStep('phone');
+  };
+
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otp || !confirmationResult || loading) return;
@@ -198,7 +211,7 @@ export default function PhoneAuth() {
           <button
             type="button"
             className={styles.backButton}
-            onClick={() => setStep('phone')}
+            onClick={handleChangeNumber}
             disabled={loading}
           >
             Change Number
