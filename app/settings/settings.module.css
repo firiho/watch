@@ -1,0 +1,267 @@
+.header {
+  margin: 8px auto 30px;
+  max-width: 680px;
+  text-align: center;
+}
+
+.header p {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 940px;
+  margin: 0 auto;
+}
+
+.card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  padding: 26px 26px 24px;
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.card:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.cardHead {
+  margin-bottom: 20px;
+}
+
+.cardHeadTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cardHeadTop .statusBadge {
+  margin-left: auto;
+}
+
+.sectionIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.cardTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.cardSubtitle {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13.5px;
+  line-height: 1.5;
+  margin: 12px 0 0;
+}
+
+.fieldLabel {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 4px 0 8px;
+}
+
+.input {
+  width: 100%;
+  max-width: 360px;
+  padding: 11px 13px;
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s ease;
+  margin-bottom: 20px;
+}
+
+.input:focus {
+  border-color: rgba(100, 255, 218, 0.6);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.chip {
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.75);
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.chipActive {
+  background: rgba(100, 255, 218, 0.16);
+  border-color: rgba(100, 255, 218, 0.55);
+  color: #d8fff5;
+}
+
+.muted {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 13px;
+}
+
+.statusBadge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.connected {
+  background: rgba(100, 255, 218, 0.16);
+  border: 1px solid rgba(100, 255, 218, 0.45);
+  color: #d8fff5;
+}
+
+.disconnected {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.detailRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.detailLabel {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.detailValue {
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  color: #fff;
+}
+
+.cardActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.primaryBtn,
+.secondaryBtn,
+.dangerBtn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.primaryBtn {
+  background: rgba(100, 255, 218, 0.18);
+  border-color: rgba(100, 255, 218, 0.55);
+  color: #d8fff5;
+}
+
+.primaryBtn:hover:not(:disabled) {
+  background: rgba(100, 255, 218, 0.28);
+}
+
+.primaryBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.secondaryBtn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.secondaryBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dangerBtn {
+  background: rgba(255, 99, 99, 0.12);
+  border-color: rgba(255, 99, 99, 0.4);
+  color: #ff9b9b;
+}
+
+.dangerBtn:hover:not(:disabled) {
+  background: rgba(255, 99, 99, 0.2);
+}
+
+.dangerBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 80px 20px;
+  gap: 8px;
+}
+
+.emptyIcon {
+  font-size: 44px;
+}
+
+.emptyTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.emptyText {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  margin: 0;
+}

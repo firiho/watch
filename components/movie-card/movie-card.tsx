@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import styles from './movie-card.module.css';
 import { useWatchlist } from '@/context/watchlist-context';
 import { useAuth } from '@/context/auth-context';
 import { useModal } from '@/context/modal-context';
 import { useReminders } from '@/context/reminder-context';
+import { useToggleReminder } from '@/hooks/use-toggle-reminder';
+import { HOVER_OPEN_DELAY_MS, PROVIDER_FETCH_DELAY_MS } from '@/lib/constants';
 
 interface WatchProvider {
   id: number;
@@ -49,7 +52,8 @@ const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, desc
   const [isHD, setIsHD] = useState(initialIsHD);
 
   const { isInList, addItem, removeItem } = useWatchlist();
-  const { reminders, addReminder, removeReminder, hasReminder, ensureTelegramSetup, requestTVReminder } = useReminders();
+  const { hasReminder } = useReminders();
+  const { toggleReminder } = useToggleReminder();
   const { user } = useAuth();
   const { openModal } = useModal();
   const inList = isInList(id);
@@ -57,27 +61,32 @@ const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, desc
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;
-    
+    const controller = new AbortController();
+
     if (isHovered && !hasFetched && !loading) {
       timeout = setTimeout(async () => {
         setLoading(true);
         try {
-          const response = await fetch(`/api/providers?id=${id}&type=${mediaType}`);
+          const response = await fetch(`/api/providers?id=${id}&type=${mediaType}`, { signal: controller.signal });
           if (!response.ok) throw new Error('Failed to fetch from proxy');
           const data = await response.json();
           setProviders(data.providers || []);
           if (data.isHD !== undefined) setIsHD(data.isHD);
+          setHasFetched(true);
         } catch (error) {
-          console.error('Failed to fetch providers:', error);
+          if ((error as Error)?.name !== 'AbortError') {
+            console.error('Failed to fetch providers:', error);
+            setHasFetched(true); // don't hammer the API on a real failure
+          }
         } finally {
           setLoading(false);
-          setHasFetched(true);
         }
-      }, 400); 
+      }, PROVIDER_FETCH_DELAY_MS);
     }
 
     return () => {
       if (timeout) clearTimeout(timeout);
+      controller.abort();
     };
   }, [isHovered, id, mediaType, hasFetched, loading]);
 
@@ -113,35 +122,15 @@ const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, desc
     }
   };
 
-  const handleToggleReminder = async (e: React.MouseEvent) => {
+  const handleToggleReminder = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!user) return;
-
-    if (hasReminder(id)) {
-      await removeReminder(id);
-      return;
-    }
-
-    if (mediaType === 'tv') {
-      await requestTVReminder({ id, title });
-      return;
-    }
-
-    const telegramReady = await ensureTelegramSetup();
-    if (!telegramReady) return;
-
-    await addReminder({
-      id,
-      name: title,
-      type: 'movie',
-      notified: false,
-    });
+    toggleReminder({ id, title, mediaType });
   };
 
   const handleMouseEnter = () => {
     hoverTimeoutRef.current = setTimeout(() => {
       setIsHovered(true);
-    }, 300); // 300ms second delay before opening
+    }, HOVER_OPEN_DELAY_MS);
   };
 
   const handleMouseLeave = () => {
@@ -161,10 +150,12 @@ const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, desc
       <div className={`${styles.card} ${isHovered ? styles.expanded : ''}`}>
         {/* Image with provider overlay */}
         <div className={styles.imageContainer}>
-          <img 
-            src={isHovered && backdrop ? backdrop : image} 
-            alt={title} 
-            className={styles.image} 
+          <Image
+            src={isHovered && backdrop ? backdrop : image}
+            alt={title}
+            className={styles.image}
+            fill
+            sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 220px"
           />
 
           {/* Providers float on the image */}
@@ -212,15 +203,18 @@ const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, desc
             <span className={styles.dot}>·</span>
             <span className={styles.mediaTag}>{mediaType === 'tv' ? 'TV' : 'Movie'}</span>
             {user && inList && !isHD && (
-              <span 
-                className={`${styles.bellIcon} ${hasReminder(id) ? styles.active : ''}`} 
+              <button
+                type="button"
+                className={`${styles.bellIcon} ${hasReminder(id) ? styles.active : ''}`}
                 title={hasReminder(id) ? 'Remove Reminder' : 'Set Reminder'}
+                aria-label={hasReminder(id) ? 'Remove reminder' : 'Set reminder'}
+                aria-pressed={hasReminder(id)}
                 onClick={handleToggleReminder}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                   <path d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22ZM18 16V11C18 7.93 16.37 5.36 13.5 4.68V4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4V4.68C7.64 5.36 6 7.92 6 11V16L4 18V19H20V18L18 16Z"/>
                 </svg>
-              </span>
+              </button>
             )}
           </div>
 

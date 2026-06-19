@@ -57,12 +57,14 @@ const ContentRail = ({ title, data }: ContentRailProps) => {
         </div>
 
         <div className={styles.railWrapper}>
-          <div 
-            className={`${styles.navArea} ${styles.prevArea}`} 
+          <button
+            type="button"
+            className={`${styles.navArea} ${styles.prevArea}`}
             onClick={() => scrollByAmount('left')}
+            aria-label="Scroll left"
           >
-            <span className={styles.navArrow}>‹</span>
-          </div>
+            <span className={styles.navArrow} aria-hidden="true">‹</span>
+          </button>
 
           <div 
             className={`${styles.rail} ${isDragging ? styles.dragging : ''}`}
@@ -85,12 +87,14 @@ const ContentRail = ({ title, data }: ContentRailProps) => {
             <div className={styles.railSpacer} />
           </div>
 
-          <div 
-            className={`${styles.navArea} ${styles.nextArea}`} 
+          <button
+            type="button"
+            className={`${styles.navArea} ${styles.nextArea}`}
             onClick={() => scrollByAmount('right')}
+            aria-label="Scroll right"
           >
-            <span className={styles.navArrow}>›</span>
-          </div>
+            <span className={styles.navArrow} aria-hidden="true">›</span>
+          </button>
         </div>
       </div>
     </section>

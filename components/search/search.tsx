@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useModal } from '@/context/modal-context';
+import { SEARCH_DEBOUNCE_MS } from '@/lib/constants';
 import styles from './search.module.css';
 
 interface SearchResult {
@@ -83,7 +84,7 @@ const Search = () => {
       } finally {
         setLoading(false);
       }
-    }, 350);
+    }, SEARCH_DEBOUNCE_MS);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);

@@ -42,6 +42,7 @@ export interface ContentItem {
     episode: number;
     name: string;
   };
+  recommendations?: ContentItem[];
 }
 
 export interface CastMember {
@@ -79,6 +80,39 @@ export interface Episode {
 const TMDB_API_TOKEN = process.env.TMDB_API_TOKEN;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
+
+// TMDB release type 4 = Digital (HD/streaming purchase). A movie counts as
+// "out in HD" only once a type-4 release exists AND its release_date has passed.
+function isHDReleased(releaseDates: any[] = [], now: Date = new Date()): boolean {
+  return releaseDates.some((rd: any) => {
+    if (rd?.type !== 4 || !rd?.release_date) return false;
+    const releaseDate = new Date(rd.release_date);
+    if (Number.isNaN(releaseDate.getTime())) return false;
+    return releaseDate <= now;
+  });
+}
+
+// Maps TMDB recommendation results into lightweight ContentItems for the
+// "More Like This" row. Falls back to the parent's media type when TMDB omits it.
+function mapRecommendations(results: any[] = [], fallbackType: 'movie' | 'tv'): ContentItem[] {
+  return results
+    .filter((item: any) => item.poster_path)
+    .slice(0, 12)
+    .map((item: any) => {
+      const mediaType: 'movie' | 'tv' =
+        item.media_type === 'tv' || item.media_type === 'movie' ? item.media_type : fallbackType;
+      return {
+        id: item.id,
+        title: item.title || item.name,
+        year: (item.release_date || item.first_air_date)?.split('-')[0] || 'N/A',
+        releaseDate: item.release_date || item.first_air_date || undefined,
+        rating: typeof item.vote_average === 'number' ? item.vote_average.toFixed(1) : '0.0',
+        image: `${IMAGE_BASE_URL}${item.poster_path}`,
+        description: item.overview,
+        mediaType,
+      };
+    });
+}
 
 function getReleaseHistoryFromUSReleaseDates(releaseDates: any[] = []) {
   const targetTypes = [3, 4];
@@ -229,6 +263,45 @@ export async function getFeaturedContent(): Promise<ContentItem[]> {
   }
 }
 
+// Personalized hero content: popular, already-released movies matching ANY of the
+// given (favorite) genre ids, with a usable landscape backdrop. Returns [] when
+// no genres are given so callers can fall back to the default featured content.
+export async function getFeaturedByGenres(genreIds: number[]): Promise<ContentItem[]> {
+  const ids = genreIds.filter((id) => Number.isInteger(id));
+  if (ids.length === 0) return [];
+
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const params = new URLSearchParams({
+      include_adult: 'false',
+      language: 'en-US',
+      page: '1',
+      sort_by: 'popularity.desc',
+      with_genres: ids.join('|'), // '|' = match ANY of these genres
+      'primary_release_date.lte': today,
+      'vote_count.gte': '50',
+    });
+
+    const data = await tmdbFetch(`/discover/movie?${params.toString()}`);
+    return (data.results || [])
+      .filter((item: any) => item.backdrop_path)
+      .slice(0, 5)
+      .map((item: any) => ({
+        id: item.id,
+        title: item.title || item.name,
+        year: (item.release_date || item.first_air_date)?.split('-')[0] || 'N/A',
+        releaseDate: item.release_date || item.first_air_date || undefined,
+        rating: typeof item.vote_average === 'number' ? item.vote_average.toFixed(1) : '0.0',
+        image: `https://image.tmdb.org/t/p/original${item.backdrop_path}`,
+        description: item.overview,
+        mediaType: 'movie' as const,
+      }));
+  } catch (error) {
+    console.error('Error fetching featured by genres:', error);
+    return [];
+  }
+}
+
 export interface WatchProvider {
   id: number;
   name: string;
@@ -256,7 +329,7 @@ export async function getWatchProviders(id: number, type: 'movie' | 'tv'): Promi
     let isHD;
     if (type === 'movie' && data.release_dates) {
       const releaseDates = data.release_dates.results?.find((r: any) => r.iso_3166_1 === 'US')?.release_dates || [];
-      isHD = releaseDates.some((rd: any) => rd.type >= 4);
+      isHD = isHDReleased(releaseDates);
     }
 
     let lastEpisode;
@@ -293,20 +366,62 @@ export async function getGenres(type: 'movie' | 'tv'): Promise<Genre[]> {
 export interface DiscoverFilters {
   genre?: string;
   year?: string;
+  country?: string;
+  // Canonical sort key: 'popular' | 'top_rated' | 'newest' | 'most_reviewed'
   sortBy?: string;
 }
 
-export async function discoverContent(type: 'movie' | 'tv', filters: DiscoverFilters): Promise<ContentItem[]> {
+export interface DiscoverResult {
+  results: ContentItem[];
+  page: number;
+  totalPages: number;
+}
+
+// Minimum vote counts so "Top Rated" surfaces well-known titles rather than
+// obscure ones with a perfect score from a handful of votes.
+const TOP_RATED_MIN_VOTES = { movie: 300, tv: 100 } as const;
+
+export async function discoverContent(
+  type: 'movie' | 'tv',
+  filters: DiscoverFilters,
+  page = 1
+): Promise<DiscoverResult> {
   try {
+    const today = new Date().toISOString().split('T')[0];
+    const dateField = type === 'movie' ? 'primary_release_date' : 'first_air_date';
+
     const params = new URLSearchParams({
       include_adult: 'false',
       language: 'en-US',
-      page: '1',
-      sort_by: filters.sortBy || 'popularity.desc',
+      page: String(page),
     });
+
+    switch (filters.sortBy) {
+      case 'top_rated':
+        params.set('sort_by', 'vote_average.desc');
+        params.set('vote_count.gte', String(TOP_RATED_MIN_VOTES[type]));
+        break;
+      case 'newest':
+        // Only already-released titles, newest first; a small vote floor drops empty placeholders.
+        params.set('sort_by', `${dateField}.desc`);
+        params.set(`${dateField}.lte`, today);
+        params.set('vote_count.gte', '10');
+        break;
+      case 'most_reviewed':
+        params.set('sort_by', 'vote_count.desc');
+        break;
+      case 'popular':
+      default:
+        params.set('sort_by', 'popularity.desc');
+        break;
+    }
 
     if (filters.genre) {
       params.append('with_genres', filters.genre);
+    }
+
+    if (filters.country) {
+      params.append('with_origin_country', filters.country.toUpperCase());
     }
 
     if (filters.year) {
@@ -324,30 +439,37 @@ export async function discoverContent(type: 'movie' | 'tv', filters: DiscoverFil
     }
 
     const data = await tmdbFetch(`/discover/${type}?${params.toString()}`);
-    return data.results.map((item: any) => ({
+    const results: ContentItem[] = (data.results || []).map((item: any) => ({
       id: item.id,
       title: item.title || item.name,
       year: (item.release_date || item.first_air_date)?.split('-')[0] || 'N/A',
       releaseDate: item.release_date || item.first_air_date || undefined,
-      rating: item.vote_average.toFixed(1),
+      rating: typeof item.vote_average === 'number' ? item.vote_average.toFixed(1) : '0.0',
       image: `${IMAGE_BASE_URL}${item.poster_path}`,
       backdrop: `https://image.tmdb.org/t/p/w780${item.backdrop_path}`,
       description: item.overview,
       mediaType: type,
     }));
+
+    return {
+      results,
+      page: data.page || page,
+      totalPages: Math.min(data.total_pages || 1, 500), // TMDB caps discover at 500 pages
+    };
   } catch (error) {
     console.error(`Error discovering ${type}:`, error);
-    return [];
+    return { results: [], page, totalPages: 0 };
   }
 }
 
 export async function getMovieDetails(id: number): Promise<ContentItem | null> {
   try {
-    const data = await tmdbFetch(`/movie/${id}?language=en-US&append_to_response=watch/providers,credits,release_dates`);
+    const data = await tmdbFetch(`/movie/${id}?language=en-US&append_to_response=watch/providers,credits,release_dates,recommendations`);
     const providersData = data['watch/providers']?.results?.US;
     const credits = data.credits;
+    const recommendations = mapRecommendations(data.recommendations?.results, 'movie');
     const releaseDates = data.release_dates?.results?.find((r: any) => r.iso_3166_1 === 'US')?.release_dates || [];
-    const isHD = releaseDates.some((rd: any) => rd.type >= 4);
+    const isHD = isHDReleased(releaseDates);
     const releaseHistory = getReleaseHistoryFromUSReleaseDates(releaseDates);
     const directorMap = new Map<number, string>();
     for (const member of credits?.crew || []) {
@@ -407,6 +529,7 @@ export async function getMovieDetails(id: number): Promise<ContentItem | null> {
         .slice(0, 5),
       isHD,
       releaseHistory,
+      recommendations,
     };
   } catch (error) {
     console.error(`Error fetching movie details for ${id}:`, error);
@@ -416,9 +539,10 @@ export async function getMovieDetails(id: number): Promise<ContentItem | null> {
 
 export async function getTVDetails(id: number): Promise<ContentItem | null> {
   try {
-    const data = await tmdbFetch(`/tv/${id}?language=en-US&append_to_response=watch/providers,credits`);
+    const data = await tmdbFetch(`/tv/${id}?language=en-US&append_to_response=watch/providers,credits,recommendations`);
     const providersData = data['watch/providers']?.results?.US;
     const credits = data.credits;
+    const recommendations = mapRecommendations(data.recommendations?.results, 'tv');
 
     return {
       id: data.id,
@@ -482,6 +606,7 @@ export async function getTVDetails(id: number): Promise<ContentItem | null> {
         episode: data.last_episode_to_air.episode_number,
         name: data.last_episode_to_air.name,
       } : undefined,
+      recommendations,
     };
   } catch (error) {
     console.error(`Error fetching TV details for ${id}:`, error);

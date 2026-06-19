@@ -1,25 +1,28 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { useModal } from '@/context/modal-context';
 import { useWatchlist } from '@/context/watchlist-context';
 import { useAuth } from '@/context/auth-context';
 import { useReminders } from '@/context/reminder-context';
+import { useToggleReminder } from '@/hooks/use-toggle-reminder';
 import { ContentItem, getTVSeasonDetails, Episode } from '@/lib/tmdb';
 import { selectBestYoutubeTrailer, TMDBVideo } from '@/lib/tmdb-video-util';
 import { getCheckpoint, setCheckpoint, Checkpoint } from '@/lib/checkpoints';
 import styles from './movie-modal.module.css';
 
 const MovieModal = () => {
-  const { activeItem, closeModal } = useModal();
+  const { activeItem, closeModal, openModal } = useModal();
   const { isInList, addItem, removeItem } = useWatchlist();
-  const { addReminder, removeReminder, hasReminder, ensureTelegramSetup, requestTVReminder } = useReminders();
+  const { hasReminder } = useReminders();
+  const { toggleReminder, pending: addingRem } = useToggleReminder();
   const { user } = useAuth();
   const [data, setData] = useState<ContentItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [addingRem, setAddingRem] = useState(false);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [activeSeason, setActiveSeason] = useState(1);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
@@ -35,10 +38,16 @@ const MovieModal = () => {
   const [trailerError, setTrailerError] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const playerRef = useRef<HTMLIFrameElement | null>(null);
+  const modalRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (activeItem) {
       fetchDetails();
+      // A movie's trailer doesn't depend on its details, so fetch it in parallel.
+      // (TV trailers need the resolved season, so they're fetched after details.)
+      if (activeItem.type === 'movie') {
+        fetchTrailer();
+      }
       if (activeItem.type === 'tv' && user) {
         fetchUserCheckpoint();
       }
@@ -52,6 +61,106 @@ const MovieModal = () => {
       setCheckpointData(null);
     }
   }, [activeItem, user]);
+
+  // Focus management: close on Escape and trap Tab focus inside the dialog.
+  useEffect(() => {
+    if (!activeItem) return;
+
+    const modalEl = modalRef.current;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    modalEl?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeModal();
+        return;
+      }
+      if (event.key !== 'Tab' || !modalEl) return;
+
+      const focusable = modalEl.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), iframe, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+
+      if (event.shiftKey && (active === first || active === modalEl)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previouslyFocused?.focus?.();
+    };
+  }, [activeItem, closeModal]);
+
+  // Mobile bottom sheet: drag down (when scrolled to the top) to dismiss.
+  useEffect(() => {
+    const el = modalRef.current;
+    if (!activeItem || !el) return;
+
+    const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
+    let startY = 0;
+    let startScroll = 0;
+    let dragging = false;
+    let dy = 0;
+
+    const onStart = (e: TouchEvent) => {
+      if (!isMobile() || e.touches.length !== 1) return;
+      startY = e.touches[0].clientY;
+      startScroll = el.scrollTop;
+      dragging = false;
+      dy = 0;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!isMobile() || e.touches.length !== 1) return;
+      const delta = e.touches[0].clientY - startY;
+      if (!dragging) {
+        // Only start a drag-to-close when at the very top and pulling downward.
+        if (startScroll <= 0 && delta > 6) {
+          dragging = true;
+          el.style.transition = 'none';
+        } else {
+          return;
+        }
+      }
+      dy = Math.max(0, delta);
+      if (e.cancelable) e.preventDefault();
+      el.style.transform = `translateY(${dy}px)`;
+    };
+    const onEnd = () => {
+      if (!dragging) return;
+      dragging = false;
+      if (dy > 110) {
+        el.style.transition = 'transform 0.2s ease';
+        el.style.transform = 'translateY(100%)';
+        window.setTimeout(() => closeModal(), 170);
+      } else {
+        el.style.transition = 'transform 0.25s ease';
+        el.style.transform = '';
+      }
+      dy = 0;
+    };
+
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd, { passive: true });
+    el.addEventListener('touchcancel', onEnd, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+      el.removeEventListener('touchcancel', onEnd);
+    };
+  }, [activeItem, closeModal]);
 
   const fetchUserCheckpoint = async () => {
     if (!user || !activeItem) return;
@@ -69,8 +178,10 @@ const MovieModal = () => {
     try {
       await setCheckpoint(user.uid, activeItem.id, seasonNum, episodeNum);
       setCheckpointData({ seasonNumber: seasonNum, episodeNumber: episodeNum, timestamp: new Date().toISOString() });
+      toast.success(`Progress saved — S${seasonNum} · E${episodeNum}`);
     } catch (error) {
       console.error('Error setting checkpoint', error);
+      toast.error('Could not save your progress. Please try again.');
     } finally {
       setSettingCheckpoint(null);
     }
@@ -82,15 +193,12 @@ const MovieModal = () => {
     setTrailerLoading(true);
     setTrailerError(false);
     try {
-      let url = '';
-      if (activeItem.type === 'movie') {
-        url = `https://api.themoviedb.org/3/movie/${activeItem.id}/videos?language=en-US`;
-      } else if (activeItem.type === 'tv') {
-        // Use selected season
+      const params = new URLSearchParams({ id: String(activeItem.id), type: activeItem.type });
+      if (activeItem.type === 'tv') {
         const seasonToUse = seasonOverride ?? activeSeason ?? 1;
-        url = `https://api.themoviedb.org/3/tv/${activeItem.id}/season/${seasonToUse}/videos?language=en-US`;
+        params.set('season', String(seasonToUse));
       }
-      const res = await fetch('/api/tmdb-proxy?url=' + encodeURIComponent(url));
+      const res = await fetch(`/api/trailer?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch trailer');
       const json = await res.json();
       const best = selectBestYoutubeTrailer(json.results || []);
@@ -120,8 +228,7 @@ const MovieModal = () => {
         fetchTrailer(firstSeason);
         return;
       }
-      // For movies, fetch trailer after details loaded
-      fetchTrailer();
+      // Movie trailers are fetched in parallel from the activeItem effect.
     } catch (error) {
       console.error('Error fetching details:', error);
     } finally {
@@ -245,35 +352,9 @@ const MovieModal = () => {
     }
   };
 
-  const handleToggleReminder = async () => {
-    if (!user || !data || addingRem) return;
-
-    setAddingRem(true);
-    try {
-      if (hasReminder(data.id)) {
-        await removeReminder(data.id);
-        return;
-      }
-
-      if (data.mediaType === 'tv') {
-        await requestTVReminder({ id: data.id, title: data.title, preloaded: data });
-        return;
-      }
-
-      const telegramReady = await ensureTelegramSetup();
-      if (!telegramReady) return;
-
-      await addReminder({
-        id: data.id,
-        name: data.title,
-        type: 'movie',
-        notified: false,
-      });
-    } catch (error) {
-      console.error('Error toggling reminder:', error);
-    } finally {
-      setAddingRem(false);
-    }
+  const handleToggleReminder = () => {
+    if (!data) return;
+    toggleReminder({ id: data.id, title: data.title, mediaType: data.mediaType, preloaded: data });
   };
 
   const formatCurrency = (amount?: number) => {
@@ -312,8 +393,17 @@ const MovieModal = () => {
 
   return (
     <div className={styles.overlay} onClick={closeModal}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <button className={styles.closeButton} onClick={closeModal}>×</button>
+      <div
+        className={styles.modal}
+        onClick={(e) => e.stopPropagation()}
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={data?.title || 'Title details'}
+        tabIndex={-1}
+      >
+        <span className={styles.grabber} aria-hidden="true" />
+        <button className={styles.closeButton} onClick={closeModal} aria-label="Close">×</button>
 
         {/* Trailer Section moved into hero to avoid being covered by backdrop */}
 
@@ -324,7 +414,16 @@ const MovieModal = () => {
         ) : data ? (
           <>
             <div className={styles.hero}>
-              <img src={data.backdrop} alt={data.title} className={`${styles.backdrop} ${trailer ? styles.backdropHidden : ''}`} />
+              {data.backdrop && (
+                <Image
+                  src={data.backdrop}
+                  alt={data.title}
+                  fill
+                  priority
+                  sizes="(max-width: 900px) 100vw, 900px"
+                  className={`${styles.backdrop} ${trailer ? styles.backdropHidden : ''}`}
+                />
+              )}
               {trailer && (
                 <div className={`${styles.trailerHero} ${trailerReady ? styles.trailerVisible : ''} ${isFullscreen ? styles.fullscreenTrailer : ''}`}>
                   <iframe
@@ -646,6 +745,27 @@ const MovieModal = () => {
                         <p className={styles.episodeOverview}>{ep.overview || "No overview available."}</p>
                       </div>
                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {data.recommendations && data.recommendations.length > 0 && (
+              <div className={styles.moreLikeThis}>
+                <h3 className={styles.moreHeading}>More Like This</h3>
+                <div className={styles.moreRow}>
+                  {data.recommendations.map((rec) => (
+                    <button
+                      key={`${rec.mediaType}-${rec.id}`}
+                      type="button"
+                      className={styles.moreCard}
+                      onClick={() => openModal(rec.id, rec.mediaType)}
+                      title={rec.title}
+                    >
+                      <img src={rec.image} alt={rec.title} className={styles.morePoster} loading="lazy" />
+                      <span className={styles.moreCardTitle}>{rec.title}</span>
+                      <span className={styles.moreCardMeta}>★ {rec.rating} · {rec.year}</span>
+                    </button>
                   ))}
                 </div>
               </div>

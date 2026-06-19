@@ -1,16 +1,26 @@
 import { db } from './firebase';
 import { collection, doc, query, where, onSnapshot, updateDoc, Timestamp } from 'firebase/firestore';
 
-export interface InboxItem {
+interface BaseInboxItem {
   id: string;
   reminderId: number;
-  type: 'tv';
   name: string;
-  season: number;
-  episode: number;
   deliveredAt?: Timestamp;
   status: 'unread' | 'dismissed' | 'confirmed';
 }
+
+export interface TVInboxItem extends BaseInboxItem {
+  type: 'tv';
+  season: number;
+  episode: number;
+}
+
+export interface MovieInboxItem extends BaseInboxItem {
+  type: 'movie';
+  milestone: 'theaters' | 'hd';
+}
+
+export type InboxItem = TVInboxItem | MovieInboxItem;
 
 export const subscribeToInbox = (
   uid: string,
@@ -24,7 +34,7 @@ export const subscribeToInbox = (
     const items: InboxItem[] = snapshot.docs.map((d) => ({
       id: d.id,
       ...(d.data() as Omit<InboxItem, 'id'>),
-    }));
+    }) as InboxItem);
     items.sort((a, b) => {
       const aMs = a.deliveredAt?.toMillis?.() ?? 0;
       const bMs = b.deliveredAt?.toMillis?.() ?? 0;

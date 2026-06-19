@@ -220,6 +220,21 @@
 
   .mobileActions {
     display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .mobileIdentity {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .mobileActions .resumeButton {

@@ -6,12 +6,15 @@ import { usePathname } from 'next/navigation';
 import styles from './navbar.module.css';
 import Logo from '../logo/logo';
 import Search from '../search/search';
+import ProfileMenu from '../profile-menu/profile-menu';
 import { useAuth } from '@/context/auth-context';
+import { useProfile } from '@/context/profile-context';
 
 const Navbar = () => {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const { label } = useProfile();
   const pathname = usePathname();
 
   useEffect(() => {
@@ -95,9 +98,7 @@ const Navbar = () => {
 
           <div className={styles.buttonContainer}>
             {user ? (
-              <button onClick={() => signOut()} className={styles.resumeButton}>
-                Sign Out
-              </button>
+              <ProfileMenu />
             ) : (
               <Link href="/auth/signin" className={styles.resumeButton}>
                 Sign In
@@ -127,6 +128,11 @@ const Navbar = () => {
                     <Link href="/watchlist" onClick={closeMobileMenu}>My List</Link>
                   </li>
                 )}
+                {user && (
+                  <li>
+                    <Link href="/settings" onClick={closeMobileMenu}>Settings</Link>
+                  </li>
+                )}
               </ol>
 
               <div className={styles.mobileSearch}>
@@ -135,15 +141,18 @@ const Navbar = () => {
 
               <div className={styles.mobileActions}>
                 {user ? (
-                  <button
-                    onClick={() => {
-                      closeMobileMenu();
-                      signOut();
-                    }}
-                    className={styles.resumeButton}
-                  >
-                    Sign Out
-                  </button>
+                  <>
+                    <span className={styles.mobileIdentity}>{label}</span>
+                    <button
+                      onClick={() => {
+                        closeMobileMenu();
+                        signOut();
+                      }}
+                      className={styles.resumeButton}
+                    >
+                      Sign Out
+                    </button>
+                  </>
                 ) : (
                   <Link href="/auth/signin" className={styles.resumeButton} onClick={closeMobileMenu}>
                     Sign In

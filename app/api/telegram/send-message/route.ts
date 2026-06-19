@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyFirebaseToken } from '@/lib/server/verify-firebase-token';
 
 export async function POST(request: NextRequest) {
   try {
+    const uid = await verifyFirebaseToken(request);
+    if (!uid) {
+      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+    }
+
     const body = await request.json();
     const token = String(body?.token || '').trim();
     const chatId = String(body?.chatId || '').trim();

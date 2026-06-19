@@ -42,11 +42,14 @@ export const metadata: Metadata = {
 };
 
 import { AuthProvider } from "@/context/auth-context";
+import { ProfileProvider } from "@/context/profile-context";
 import { WatchlistProvider } from "@/context/watchlist-context";
 import { ReminderProvider } from "@/context/reminder-context";
 import { ModalProvider } from "@/context/modal-context";
 import MovieModal from "@/components/movie-modal/movie-modal";
 import InboxPopup from "@/components/inbox-popup/inbox-popup";
+import ErrorBoundary from "@/components/error-boundary/error-boundary";
+import { Toaster } from "sonner";
 
 export default function RootLayout({
   children,
@@ -56,19 +59,22 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${firaCode.variable}`} suppressHydrationWarning>        <AuthProvider>
+          <ProfileProvider>
           <WatchlistProvider>
             <ReminderProvider>
               <ModalProvider>
                 <Intro />
                 <Navbar />
                 <SideLines />
-                {children}
+                <ErrorBoundary>{children}</ErrorBoundary>
                 <MovieModal />
                 <InboxPopup />
                 <Footer />
+                <Toaster theme="dark" position="bottom-center" richColors />
               </ModalProvider>
             </ReminderProvider>
           </WatchlistProvider>
+          </ProfileProvider>
         </AuthProvider>
         <Analytics />
         <SpeedInsights />

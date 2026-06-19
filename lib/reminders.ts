@@ -5,7 +5,10 @@ export interface ReminderItem {
   id: number;
   name: string;
   type: 'movie' | 'tv';
+  /** @deprecated legacy HD flag — kept in sync with notifiedHD for older docs */
   notified?: boolean;
+  notifiedTheaters?: boolean; // notified that the movie hit theaters (TMDB type 3)
+  notifiedHD?: boolean; // notified that the movie is out in HD/digital (TMDB type 4)
   season?: number;
   episode?: number;
   timestamp?: string;
@@ -23,7 +26,11 @@ export const addReminder = async (item: ReminderItem) => {
   };
 
   if (item.type === 'movie') {
-    data.notified = item.notified ?? false;
+    // Track theatrical (type 3) and HD (type 4) milestones independently. The
+    // scheduler uses `timestamp` as a baseline so milestones already passed at
+    // add-time are marked silently instead of firing a stale notification.
+    data.notifiedTheaters = item.notifiedTheaters ?? false;
+    data.notifiedHD = item.notifiedHD ?? item.notified ?? false;
   }
 
   // Remove undefined fields for Firestore compatibility

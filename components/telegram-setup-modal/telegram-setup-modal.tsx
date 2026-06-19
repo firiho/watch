@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { authHeader } from '@/lib/auth-headers';
 import styles from './telegram-setup-modal.module.css';
 
 interface TelegramSetupModalProps {
   open: boolean;
   loading?: boolean;
+  mode?: 'optional' | 'required';
   onClose: () => void;
   onComplete: (config: { botToken: string; chatId: string }) => Promise<void>;
 }
@@ -13,9 +15,11 @@ interface TelegramSetupModalProps {
 export default function TelegramSetupModal({
   open,
   loading = false,
+  mode = 'required',
   onClose,
   onComplete,
 }: TelegramSetupModalProps) {
+  const isOptional = mode === 'optional';
   const [botToken, setBotToken] = useState('');
   const [chatId, setChatId] = useState('');
   const [checkingUpdates, setCheckingUpdates] = useState(false);
@@ -52,7 +56,7 @@ export default function TelegramSetupModal({
     try {
       const res = await fetch('/api/telegram/get-updates', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({ token }),
       });
 
@@ -101,9 +105,13 @@ export default function TelegramSetupModal({
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <div>
-            <h3 className={styles.title}>Set Up Telegram Notifications</h3>
+            <h3 className={styles.title}>
+              {isOptional ? 'Want Telegram pings too?' : 'Set Up Telegram Notifications'}
+            </h3>
             <p className={styles.subtitle}>
-              One-time setup. We&apos;ll use your bot token + chat ID so reminders can be sent directly to your Telegram.
+              {isOptional
+                ? 'Optional — your reminders already show up in-app. Connect Telegram if you also want a push message. You can do this later from Settings.'
+                : "One-time setup. We'll use your bot token + chat ID so reminders can be sent directly to your Telegram."}
             </p>
           </div>
           <button className={styles.close} onClick={onClose} aria-label="Close Telegram setup">
@@ -163,7 +171,7 @@ export default function TelegramSetupModal({
 
         <div className={styles.actions}>
           <button type="button" className={styles.button} onClick={onClose} disabled={loading}>
-            Cancel
+            {isOptional ? 'Skip for now' : 'Cancel'}
           </button>
           <button
             type="button"

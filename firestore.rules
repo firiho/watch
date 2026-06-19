@@ -4,6 +4,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
   	// Users can only access their own watchlist and reminders
     match /users/{userId} {
+      // The user's own profile document (displayName, favoriteGenres, etc.)
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
       match /watchlist/{itemId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }

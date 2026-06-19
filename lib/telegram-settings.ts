@@ -1,5 +1,5 @@
 import { auth, db } from './firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 
 export interface TelegramSettings {
   botToken: string;
@@ -34,4 +34,10 @@ export const saveTelegramSettings = async (settings: TelegramSettings): Promise<
     createdAt: existing.exists() ? (existing.data() as TelegramSettings).createdAt || now : now,
     updatedAt: now,
   });
+};
+
+export const deleteTelegramSettings = async (): Promise<void> => {
+  const user = auth.currentUser;
+  if (!user) return;
+  await deleteDoc(getTelegramSettingsRef(user.uid));
 };
