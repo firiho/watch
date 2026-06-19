@@ -1,6 +1,14 @@
+'use client';
+
+import { usePathname } from 'next/navigation';
 import styles from './footer.module.css';
 
 const Footer = () => {
+  const pathname = usePathname();
+
+  // The auth page is its own full-screen world — no site footer there.
+  if (pathname === '/auth') return null;
+
   return (
     <footer className={styles.footer}>
       <div className={styles.container}>

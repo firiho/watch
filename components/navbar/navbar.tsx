@@ -100,7 +100,7 @@ const Navbar = () => {
             {user ? (
               <ProfileMenu />
             ) : (
-              <Link href="/auth/signin" className={styles.resumeButton}>
+              <Link href="/auth" className={styles.resumeButton}>
                 Sign In
               </Link>
             )}
@@ -154,7 +154,7 @@ const Navbar = () => {
                     </button>
                   </>
                 ) : (
-                  <Link href="/auth/signin" className={styles.resumeButton} onClick={closeMobileMenu}>
+                  <Link href="/auth" className={styles.resumeButton} onClick={closeMobileMenu}>
                     Sign In
                   </Link>
                 )}

@@ -1,80 +1,115 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { 
-  RecaptchaVerifier, 
-  signInWithPhoneNumber, 
-  ConfirmationResult 
+import { useState, useRef } from 'react';
+import {
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  ConfirmationResult
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import styles from '@/app/auth/auth.module.css';
 import { useRouter } from 'next/navigation';
 
+// Turn Firebase's cryptic error codes into something a human (and a funny one) can read.
+function friendlyError(err: any): string {
+  switch (err?.code) {
+    case 'auth/invalid-recaptcha-token':
+    case 'auth/missing-recaptcha-token':
+      return 'reCAPTCHA glitched out. Hit the button once more — fresh token, fresh start.';
+    case 'auth/captcha-check-failed':
+      return "reCAPTCHA couldn't vouch for this domain. (Dev note: check Firebase → Authentication → Authorized domains.)";
+    case 'auth/invalid-phone-number':
+    case 'auth/missing-phone-number':
+      return "That's not a real number. Include the country code, e.g. +1 234 567 8900.";
+    case 'auth/too-many-requests':
+      return "Easy there, speed racer. Too many tries — wait a few minutes.";
+    case 'auth/quota-exceeded':
+      return "SMS quota maxed out for now. Try again later.";
+    default:
+      return err?.message || 'Something broke. Try again.';
+  }
+}
+
+// Pretty-print the national number as (XXX) XXX-XXXX, gracefully handling
+// any length so the live preview always reads cleanly while typing.
+function formatNational(digits: string): string {
+  if (!digits) return '';
+  const a = digits.slice(0, 3);
+  const b = digits.slice(3, 6);
+  const c = digits.slice(6, 10);
+  const rest = digits.slice(10);
+  let out = digits.length > 3 ? `(${a})` : `(${a}`;
+  if (b) out += ` ${b}`;
+  if (c) out += `-${c}`;
+  if (rest) out += ` ${rest}`;
+  return out;
+}
+
 export default function PhoneAuth() {
+  const [countryCode, setCountryCode] = useState('1');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  
+
   const recaptchaRef = useRef<HTMLDivElement>(null);
   const recaptchaVerifier = useRef<RecaptchaVerifier | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    // Prevent double initialization in Next.js Strict Mode
-    if (typeof window !== 'undefined' && !recaptchaVerifier.current && recaptchaRef.current) {
+  // Tear down any existing verifier and DELETE its host node entirely.
+  // grecaptcha keeps an internal registry keyed on the DOM element, so it
+  // throws "reCAPTCHA has already been rendered in this element" if we ever
+  // reuse a node — emptying innerHTML isn't enough. We must drop the node.
+  const resetRecaptcha = () => {
+    if (recaptchaVerifier.current) {
       try {
-        recaptchaVerifier.current = new RecaptchaVerifier(auth, recaptchaRef.current, {
-          size: 'invisible', // Invisible is smoother for users
-          callback: () => {
-            // reCAPTCHA solved automatically
-          },
-          'expired-callback': () => {
-            setError('reCAPTCHA expired. Please try again.');
-          }
-        });
-
-        recaptchaVerifier.current.render();
-      } catch (err: any) {
-        console.error('reCAPTCHA Initialization Error:', err);
+        recaptchaVerifier.current.clear();
+      } catch {
+        // already gone, ignore
       }
+      recaptchaVerifier.current = null;
     }
-    
-    return () => {
-      if (recaptchaVerifier.current) {
-        try {
-          recaptchaVerifier.current.clear();
-          recaptchaVerifier.current = null;
-          // Physically clear the container to prevent ghosting
-          if (recaptchaRef.current) {
-            recaptchaRef.current.innerHTML = '';
-          }
-        } catch (e) {
-          // Ignore cleanup errors
-        }
-      }
-    };
-  }, []);
+    // Remove every child host node from the stable wrapper.
+    if (recaptchaRef.current) recaptchaRef.current.replaceChildren();
+  };
+
+  // Build a brand new verifier on a FRESH child node for every send.
+  // Invisible reCAPTCHA tokens are single-use, and the node can't be reused,
+  // so a clean node + clean verifier each time avoids both
+  // auth/invalid-recaptcha-token and the "already rendered" crash.
+  const getFreshVerifier = async (): Promise<RecaptchaVerifier> => {
+    resetRecaptcha();
+    const host = document.createElement('div');
+    recaptchaRef.current!.appendChild(host);
+    const verifier = new RecaptchaVerifier(auth, host, {
+      size: 'invisible'
+    });
+    await verifier.render();
+    recaptchaVerifier.current = verifier;
+    return verifier;
+  };
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phoneNumber || loading) return;
-    
+
     setLoading(true);
     setError(null);
 
     try {
-      const appVerifier = recaptchaVerifier.current;
-      if (!appVerifier) throw new Error('reCAPTCHA not initialized');
-
-      const result = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+      // Stitch dial code + the digits the user typed into E.164 (e.g. +250788123456).
+      const fullNumber = `+${countryCode.replace(/\D/g, '')}${phoneNumber.replace(/\D/g, '')}`;
+      const verifier = await getFreshVerifier();
+      const result = await signInWithPhoneNumber(auth, fullNumber, verifier);
       setConfirmationResult(result);
       setStep('otp');
     } catch (err: any) {
       console.error('Login Error:', err);
-      setError(err.message || 'Failed to send code.');
+      // The verifier's token is spent/blocked now — drop it so a retry rebuilds.
+      resetRecaptcha();
+      setError(friendlyError(err));
     } finally {
       setLoading(false);
     }
@@ -103,24 +138,51 @@ export default function PhoneAuth() {
         <form onSubmit={handleSendOtp} className={styles.form}>
           <div className={styles.inputGroup}>
             <label htmlFor="phoneNumber">Phone Number</label>
-            <input
-              type="tel"
-              id="phoneNumber"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="+1 234 567 8900"
-              required
-              disabled={loading}
-              className={styles.input}
-            />
+            <div className={styles.phoneRow}>
+              <div className={styles.codeField}>
+                <span className={styles.plus}>+</span>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  aria-label="Country code"
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  placeholder="1"
+                  disabled={loading}
+                  className={styles.codeInput}
+                />
+              </div>
+              <input
+                type="tel"
+                inputMode="numeric"
+                id="phoneNumber"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                placeholder="788 123 456"
+                required
+                disabled={loading}
+                className={styles.numberInput}
+              />
+            </div>
+
+            <div className={styles.preview}>
+              {countryCode || phoneNumber ? (
+                <>+{countryCode} {formatNational(phoneNumber)}</>
+              ) : (
+                <span className={styles.previewEmpty}>
+                  country code + your number
+                </span>
+              )}
+            </div>
           </div>
-          
+
+          {/* Invisible reCAPTCHA mounts here; rebuilt fresh on every send. */}
           <div ref={recaptchaRef}></div>
-          
+
           {error && <div className={styles.errorMessage}>{error}</div>}
-          
-          <button 
-            type="submit" 
+
+          <button
+            type="submit"
             className={styles.button}
             disabled={loading}
           >
@@ -145,11 +207,11 @@ export default function PhoneAuth() {
               className={styles.input}
             />
           </div>
-          
+
           {error && <div className={styles.errorMessage}>{error}</div>}
-          
-          <button 
-            type="submit" 
+
+          <button
+            type="submit"
             className={styles.button}
             disabled={loading}
           >
@@ -157,9 +219,9 @@ export default function PhoneAuth() {
               <span className={styles.loader}>Verifying...</span>
             ) : 'Verify & Sign In'}
           </button>
-          
-          <button 
-            type="button" 
+
+          <button
+            type="button"
             className={styles.backButton}
             onClick={() => setStep('phone')}
             disabled={loading}

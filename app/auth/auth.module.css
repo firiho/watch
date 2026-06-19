@@ -1,52 +1,79 @@
 .page {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   display: flex;
   align-items: center;
+  justify-content: center;
+  padding: 24px;
   position: relative;
   background-color: var(--bg-color);
-  background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=1600&q=80');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.7)), url('https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=1600&q=80');
   background-size: cover;
   background-position: center;
 }
 
+/* Liquid-glass card: translucent, blurred, soft-rounded, floating. */
 .container {
   width: 100%;
-  max-width: 500px;
-  height: 100vh;
-  padding: 120px 100px 40px;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(100, 255, 218, 0.1);
+  max-width: 400px;
+  padding: 36px 34px;
+  background: rgba(20, 22, 26, 0.5);
+  backdrop-filter: blur(28px) saturate(150%);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 30px 80px -24px rgba(0, 0, 0, 0.8);
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  box-shadow: 20px 0 50px rgba(0, 0, 0, 0.5);
 }
 
 .header {
-  margin-bottom: 50px;
+  margin-bottom: 26px;
+}
+
+.tagline {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: var(--accent-color);
+  opacity: 0.85;
+  margin-bottom: 14px;
 }
 
 .header h1 {
-  font-size: 48px;
-  font-weight: 800;
-  margin-bottom: 16px;
+  font-size: 34px;
+  font-weight: 700;
+  margin-bottom: 10px;
   color: var(--text-white);
   letter-spacing: -1px;
+  line-height: 1.05;
+}
+
+.subhead {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--accent-color) !important;
+  opacity: 0.9 !important;
+  margin-bottom: 14px;
+  letter-spacing: -0.2px;
 }
 
 .header p {
-  font-size: 16px;
+  font-size: 13.5px;
   color: var(--text-secondary);
-  line-height: 1.6;
-  opacity: 0.8;
+  line-height: 1.55;
+  opacity: 0.85;
+  margin: 0;
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 25px;
+  gap: 14px;
 }
 
 .inputGroup {
@@ -56,38 +83,114 @@
 
 .inputGroup label {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 11px;
+  text-transform: uppercase;
   color: var(--accent-color);
-  margin-bottom: 10px;
+  opacity: 0.8;
+  margin-bottom: 9px;
   letter-spacing: 1px;
 }
 
 .inputGroup input {
-  background-color: rgba(26, 26, 26, 0.5);
-  border: 1px solid rgba(100, 255, 218, 0.1);
-  border-radius: var(--border-radius);
-  padding: 15px 20px;
-  color: var(--text-primary);
-  font-size: 16px;
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--text-white);
+  font-size: 15px;
   transition: var(--transition);
   width: 100%;
 }
 
+.inputGroup input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
 .inputGroup input:focus {
   outline: none;
-  border-color: var(--accent-color);
-  background-color: rgba(26, 26, 26, 0.8);
-  box-shadow: 0 0 15px rgba(100, 255, 218, 0.1);
+  border-color: rgba(100, 255, 218, 0.5);
+  background-color: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 0 0 3px rgba(100, 255, 218, 0.08);
+}
+
+.phoneRow {
+  display: flex;
+  gap: 8px;
+}
+
+/* Small country-code box with a fixed "+" prefix. */
+.codeField {
+  flex: 0 0 auto;
+  width: 78px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 12px 12px;
+  transition: var(--transition);
+}
+
+.codeField:focus-within {
+  border-color: rgba(100, 255, 218, 0.5);
+  background-color: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 0 0 3px rgba(100, 255, 218, 0.08);
+}
+
+.plus {
+  color: var(--accent-color);
+  font-size: 15px;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+
+/* Scoped high enough to beat `.inputGroup input` (and its :focus), otherwise
+   the code field inherits a full bordered box and nests a box-in-a-box. */
+.inputGroup .codeField input,
+.inputGroup .codeField input:focus {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  outline: none;
+  padding: 0;
+  box-shadow: none;
+  color: var(--text-white);
+  font-size: 15px;
+}
+
+.numberInput {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Live, pretty preview of the full E.164 number as they type. */
+.preview {
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  color: var(--accent-color);
+}
+
+.previewEmpty {
+  color: var(--text-secondary);
+  opacity: 0.45;
+  font-size: 13px;
+  letter-spacing: 0;
 }
 
 .errorMessage {
-  color: #ff4d4d;
-  font-size: 14px;
-  margin-bottom: 20px;
-  padding: 10px;
+  color: #ff6b6b;
+  font-size: 13px;
+  padding: 10px 12px;
   background: rgba(255, 77, 77, 0.1);
-  border-radius: 4px;
-  border-left: 3px solid #ff4d4d;
+  border: 1px solid rgba(255, 77, 77, 0.25);
+  border-radius: 10px;
 }
 
 .loader {
@@ -102,9 +205,9 @@
   border: none;
   color: var(--text-secondary);
   text-decoration: underline;
-  margin-top: 20px;
+  margin-top: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-family: var(--font-mono);
   transition: var(--transition);
   align-self: flex-start;
@@ -115,13 +218,13 @@
 }
 
 .button {
-  margin-top: 15px;
-  color: var(--bg-color);
+  margin-top: 2px;
+  color: #08120f;
   background-color: var(--accent-color);
   border: 1px solid var(--accent-color);
-  border-radius: var(--border-radius);
-  padding: 18px;
-  font-size: 14px;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 13px;
   font-family: var(--font-mono);
   font-weight: 600;
   letter-spacing: 1px;
@@ -132,66 +235,53 @@
 .button:hover {
   background-color: transparent;
   color: var(--accent-color);
-  transform: translateY(-3px);
-  box-shadow: 0 10px 30px -15px var(--accent-color);
+  box-shadow: 0 8px 24px -12px var(--accent-color);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .footer {
-  margin-top: 40px;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
   text-align: left;
-  font-size: 15px;
+  font-size: 13px;
   color: var(--text-secondary);
+  line-height: 1.55;
 }
 
-@media (max-width: 768px) {
+.disclaimer {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.disclaimer strong {
+  color: var(--text-white);
+}
+
+.disclaimerSub {
+  margin: 6px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  font-style: italic;
+}
+
+@media (max-width: 480px) {
   .page {
-    align-items: stretch;
-    background-position: 60% center;
+    padding: 16px;
   }
 
   .container {
-    max-width: 100%;
-    height: auto;
-    min-height: 100vh;
-    padding: 100px 28px 48px;
-    background: rgba(0, 0, 0, 0.9);
-    border-right: 0;
-    box-shadow: none;
-  }
-
-  .header {
-    margin-bottom: 32px;
-  }
-
-  .header h1 {
-    font-size: 36px;
-    margin-bottom: 10px;
-  }
-
-  .form {
-    gap: 18px;
-  }
-}
-
-@media (max-width: 420px) {
-  .container {
-    padding: 92px 16px 32px;
+    padding: 30px 24px;
+    border-radius: 18px;
   }
 
   .header h1 {
     font-size: 30px;
-  }
-
-  .header p {
-    font-size: 14px;
-  }
-
-  .inputGroup input {
-    padding: 14px 16px;
-  }
-
-  .button {
-    padding: 16px;
-    font-size: 13px;
   }
 }
