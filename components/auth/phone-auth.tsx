@@ -30,21 +30,6 @@ function friendlyError(err: any): string {
   }
 }
 
-// Pretty-print the national number as (XXX) XXX-XXXX, gracefully handling
-// any length so the live preview always reads cleanly while typing.
-function formatNational(digits: string): string {
-  if (!digits) return '';
-  const a = digits.slice(0, 3);
-  const b = digits.slice(3, 6);
-  const c = digits.slice(6, 10);
-  const rest = digits.slice(10);
-  let out = digits.length > 3 ? `(${a})` : `(${a}`;
-  if (b) out += ` ${b}`;
-  if (c) out += `-${c}`;
-  if (rest) out += ` ${rest}`;
-  return out;
-}
-
 export default function PhoneAuth() {
   const [countryCode, setCountryCode] = useState('1');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -163,16 +148,6 @@ export default function PhoneAuth() {
                 disabled={loading}
                 className={styles.numberInput}
               />
-            </div>
-
-            <div className={styles.preview}>
-              {countryCode || phoneNumber ? (
-                <>+{countryCode} {formatNational(phoneNumber)}</>
-              ) : (
-                <span className={styles.previewEmpty}>
-                  country code + your number
-                </span>
-              )}
             </div>
           </div>
 

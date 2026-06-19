@@ -168,22 +168,6 @@
   min-width: 0;
 }
 
-/* Live, pretty preview of the full E.164 number as they type. */
-.preview {
-  margin-top: 10px;
-  font-family: var(--font-mono);
-  font-size: 15px;
-  letter-spacing: 0.5px;
-  color: var(--accent-color);
-}
-
-.previewEmpty {
-  color: var(--text-secondary);
-  opacity: 0.45;
-  font-size: 13px;
-  letter-spacing: 0;
-}
-
 .errorMessage {
   color: #ff6b6b;
   font-size: 13px;
