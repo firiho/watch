@@ -501,6 +501,28 @@
   cursor: default;
 }
 
+.ratingPanel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ratingBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ratingHint {
+  font-size: 13px;
+  line-height: 26px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
 .metaGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -1277,6 +1299,27 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.04);
   transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.morePosterWrap {
+  position: relative;
+  display: block;
+}
+
+.moreRecBadge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: inline-flex;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(100, 255, 218, 0.35);
+  transition: transform 0.2s ease;
+}
+
+.moreCard:hover .moreRecBadge {
+  transform: translateY(-4px);
 }
 
 .moreCard:hover .morePoster {

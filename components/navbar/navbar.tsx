@@ -92,6 +92,10 @@ const Navbar = () => {
                 <Link href="/watchlist"><span className="text-accent">03.</span> My List</Link>
               </li>
             )}
+            {/* Public, so it shows signed out too — numbered after My List when that's visible */}
+            <li>
+              <Link href="/recs"><span className="text-accent">{user ? '04.' : '03.'}</span> Recs</Link>
+            </li>
           </ol>
 
           <Search />
@@ -128,6 +132,9 @@ const Navbar = () => {
                     <Link href="/watchlist" onClick={closeMobileMenu}>My List</Link>
                   </li>
                 )}
+                <li>
+                  <Link href="/recs" onClick={closeMobileMenu}>Recs</Link>
+                </li>
                 {user && (
                   <li>
                     <Link href="/settings" onClick={closeMobileMenu}>Settings</Link>

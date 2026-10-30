@@ -1,5 +1,7 @@
 import { db, auth } from './firebase';
-import { collection, doc, setDoc, deleteDoc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, getDoc, getDocs, writeBatch, deleteField } from 'firebase/firestore';
+import { isAdminUid } from './admin';
+import { recommendationRef, toRecommendation } from './recommendations';
 
 export interface WatchlistItem {
   id: number;
@@ -18,6 +20,8 @@ export interface WatchlistItem {
   original_language: string;
   media_type: 'movie' | 'tv';
   added_at: number;
+  rating?: number; // personal 1–5 star ranking
+  rated_at?: number;
 }
 
 export const addToWatchlist = async (item: any, mediaType: 'movie' | 'tv') => {
@@ -54,7 +58,41 @@ export const removeFromWatchlist = async (itemId: number) => {
   if (!user) return;
 
   const watchlistRef = doc(db, 'users', user.uid, 'watchlist', itemId.toString());
-  await deleteDoc(watchlistRef);
+  if (!isAdminUid(user.uid)) {
+    await deleteDoc(watchlistRef);
+    return;
+  }
+
+  // The admin's list backs their public recommendations, so the rec goes with it.
+  const snap = await getDoc(watchlistRef);
+  const batch = writeBatch(db);
+  batch.delete(watchlistRef);
+  if (snap.exists()) {
+    batch.delete(recommendationRef(itemId, (snap.data() as WatchlistItem).media_type));
+  }
+  await batch.commit();
+};
+
+// Sets (1–5) or clears (null) the star ranking on a title in the user's list.
+export const rateWatchlistItem = async (item: WatchlistItem, stars: number | null) => {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const watchlistRef = doc(db, 'users', user.uid, 'watchlist', item.id.toString());
+  const batch = writeBatch(db);
+  batch.update(
+    watchlistRef,
+    stars ? { rating: stars, rated_at: Date.now() } : { rating: deleteField(), rated_at: deleteField() }
+  );
+
+  // The admin's rankings are published as public recommendations.
+  if (isAdminUid(user.uid)) {
+    const recRef = recommendationRef(item.id, item.media_type);
+    if (stars) batch.set(recRef, toRecommendation(item, stars));
+    else batch.delete(recRef);
+  }
+
+  await batch.commit();
 };
 
 export const isInWatchlist = async (itemId: number): Promise<boolean> => {

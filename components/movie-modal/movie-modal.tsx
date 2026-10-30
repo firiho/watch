@@ -8,7 +8,10 @@ import { useModal } from '@/context/modal-context';
 import { useWatchlist } from '@/context/watchlist-context';
 import { useAuth } from '@/context/auth-context';
 import { useReminders } from '@/context/reminder-context';
+import { useRecommendations } from '@/context/recommendations-context';
 import { useToggleReminder } from '@/hooks/use-toggle-reminder';
+import StarRating from '@/components/star-rating/star-rating';
+import { ADMIN_NAME } from '@/lib/admin';
 import { ContentItem, getTVSeasonDetails, Episode } from '@/lib/tmdb';
 import { selectBestYoutubeTrailer, TMDBVideo } from '@/lib/tmdb-video-util';
 import { getCheckpoint, setCheckpoint, Checkpoint } from '@/lib/checkpoints';
@@ -16,10 +19,11 @@ import styles from './movie-modal.module.css';
 
 const MovieModal = () => {
   const { activeItem, closeModal, openModal } = useModal();
-  const { isInList, addItem, removeItem } = useWatchlist();
+  const { isInList, addItem, removeItem, getRating, setRating } = useWatchlist();
+  const { getRecommendation } = useRecommendations();
   const { hasReminder } = useReminders();
   const { toggleReminder, pending: addingRem } = useToggleReminder();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [data, setData] = useState<ContentItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -391,6 +395,8 @@ const MovieModal = () => {
 
   if (!activeItem) return null;
 
+  const rec = data ? getRecommendation(data.id, data.mediaType) : undefined;
+
   return (
     <div className={styles.overlay} onClick={closeModal}>
       <div
@@ -557,6 +563,33 @@ const MovieModal = () => {
                     </span>
                   )}
                 </div>
+                {((rec && !isAdmin) || user) && (
+                  <div className={styles.ratingPanel}>
+                    {rec && !isAdmin && (
+                      <div className={styles.ratingBlock}>
+                        <span className={styles.metaLabel}>{ADMIN_NAME}&apos;s rating</span>
+                        <StarRating value={rec.stars} size="md" tone="accent" />
+                      </div>
+                    )}
+                    {user && (
+                      <div className={styles.ratingBlock}>
+                        <span className={styles.metaLabel}>
+                          {isAdmin ? 'Your recommendation · public' : 'Your rating'}
+                        </span>
+                        {isInList(data.id) ? (
+                          <StarRating
+                            value={getRating(data.id)}
+                            onChange={(stars) => setRating(data.id, stars)}
+                            size="md"
+                            label={isAdmin ? `Recommend ${data.title}` : `Rate ${data.title}`}
+                          />
+                        ) : (
+                          <span className={styles.ratingHint}>Add to My List to rate it</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <p className={styles.overview}>{data.description}</p>
                 <div className={styles.metaGrid}>
                   {data.genres && (
@@ -754,19 +787,29 @@ const MovieModal = () => {
               <div className={styles.moreLikeThis}>
                 <h3 className={styles.moreHeading}>More Like This</h3>
                 <div className={styles.moreRow}>
-                  {data.recommendations.map((rec) => (
-                    <button
-                      key={`${rec.mediaType}-${rec.id}`}
-                      type="button"
-                      className={styles.moreCard}
-                      onClick={() => openModal(rec.id, rec.mediaType)}
-                      title={rec.title}
-                    >
-                      <img src={rec.image} alt={rec.title} className={styles.morePoster} loading="lazy" />
-                      <span className={styles.moreCardTitle}>{rec.title}</span>
-                      <span className={styles.moreCardMeta}>★ {rec.rating} · {rec.year}</span>
-                    </button>
-                  ))}
+                  {data.recommendations.map((similar) => {
+                    const similarRec = getRecommendation(similar.id, similar.mediaType);
+                    return (
+                      <button
+                        key={`${similar.mediaType}-${similar.id}`}
+                        type="button"
+                        className={styles.moreCard}
+                        onClick={() => openModal(similar.id, similar.mediaType)}
+                        title={similar.title}
+                      >
+                        <span className={styles.morePosterWrap}>
+                          <img src={similar.image} alt={similar.title} className={styles.morePoster} loading="lazy" />
+                          {similarRec && (
+                            <span className={styles.moreRecBadge} title={`${ADMIN_NAME} rates this ${similarRec.stars}/5`}>
+                              <StarRating value={similarRec.stars} size="xs" tone="accent" />
+                            </span>
+                          )}
+                        </span>
+                        <span className={styles.moreCardTitle}>{similar.title}</span>
+                        <span className={styles.moreCardMeta}>★ {similar.rating} · {similar.year}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

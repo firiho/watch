@@ -1,52 +1,34 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import MovieCard from '@/components/movie-card/movie-card';
 import MovieCardSkeleton from '@/components/movie-card/movie-card-skeleton';
 import { useWatchlist } from '@/context/watchlist-context';
 import { useAuth } from '@/context/auth-context';
-import { getWatchlist, WatchlistItem } from '@/lib/watchlist';
 import { useReminders } from '@/context/reminder-context';
+import ListFilters, { MediaFilter, RatingFilter } from '@/components/list-filters/list-filters';
 import styles from '../collections.module.css';
 import listStyles from './watchlist.module.css';
 
 export default function MyListPage() {
   const { user } = useAuth();
-  const { watchlist } = useWatchlist();
+  // Live items from the watchlist subscription, so ratings and add/remove show instantly.
+  const { items, loading } = useWatchlist();
   const { hasReminder } = useReminders();
-  const [items, setItems] = useState<WatchlistItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filterReminders, setFilterReminders] = useState(false);
-  const [mediaFilter, setMediaFilter] = useState<'all' | 'movie' | 'tv'>('all');
-
-  useEffect(() => {
-    const fetchList = async () => {
-      if (!user) {
-        setItems([]);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const data = await getWatchlist();
-        setItems(data);
-      } catch (error) {
-        console.error('Error fetching watchlist:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchList();
-  }, [user, watchlist]); // Re-fetch when watchlist Set changes (add/remove)
+  const [mediaFilter, setMediaFilter] = useState<MediaFilter>('all');
+  const [ratingFilter, setRatingFilter] = useState<RatingFilter>(null);
 
   const displayedItems = items.filter((item) => {
     const matchesReminder = !filterReminders || hasReminder(item.id);
     const matchesMedia = mediaFilter === 'all' || item.media_type === mediaFilter;
-    return matchesReminder && matchesMedia;
+    const matchesRating =
+      ratingFilter === null ||
+      (ratingFilter === 'unrated' ? !item.rating : item.rating === ratingFilter);
+    return matchesReminder && matchesMedia && matchesRating;
   });
 
-  const hasActiveFilters = filterReminders || mediaFilter !== 'all';
+  const hasActiveFilters = filterReminders || mediaFilter !== 'all' || ratingFilter !== null;
 
   if (!user) {
     return (
@@ -69,49 +51,16 @@ export default function MyListPage() {
           <h1 className={styles.title}>My List</h1>
           <p className={styles.description}>Your personal collection of must-watch titles. Keep track of everything you want to see.</p>
         </div>
-        <div className={listStyles.headerActions}>
-          <div className={listStyles.filterGroup} role="group" aria-label="Filter by media type">
-            <button
-              className={`${listStyles.filterPill} ${mediaFilter === 'all' ? listStyles.active : ''}`}
-              onClick={() => setMediaFilter('all')}
-              title="Show all titles"
-              aria-pressed={mediaFilter === 'all'}
-              disabled={loading}
-            >
-              All
-            </button>
-            <button
-              className={`${listStyles.filterPill} ${mediaFilter === 'movie' ? listStyles.active : ''}`}
-              onClick={() => setMediaFilter('movie')}
-              title="Show movies only"
-              aria-pressed={mediaFilter === 'movie'}
-              disabled={loading}
-            >
-              Movies
-            </button>
-            <button
-              className={`${listStyles.filterPill} ${mediaFilter === 'tv' ? listStyles.active : ''}`}
-              onClick={() => setMediaFilter('tv')}
-              title="Show TV series only"
-              aria-pressed={mediaFilter === 'tv'}
-              disabled={loading}
-            >
-              TV Series
-            </button>
-          </div>
-          <button 
-            className={`${listStyles.filterToggle} ${filterReminders ? listStyles.active : ''}`}
-            onClick={() => setFilterReminders(!filterReminders)}
-            title={filterReminders ? "Show all titles" : "Filter by reminders"}
-            aria-pressed={filterReminders}
-            disabled={loading}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22ZM18 16V11C18 7.93 16.37 5.36 13.5 4.68V4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4V4.68C7.64 5.36 6 7.92 6 11V16L4 18V19H20V18L18 16Z"/>
-            </svg>
-          </button>
-          <span className={listStyles.count}>{items.length} title{items.length !== 1 ? 's' : ''}</span>
-        </div>
+        <ListFilters
+          media={mediaFilter}
+          onMediaChange={setMediaFilter}
+          rating={ratingFilter}
+          onRatingChange={setRatingFilter}
+          showUnrated
+          remindersOnly={filterReminders}
+          onRemindersOnlyChange={setFilterReminders}
+          count={items.length}
+        />
       </header>
 
       {loading ? (
@@ -136,6 +85,7 @@ export default function MyListPage() {
               onClick={() => {
                 setFilterReminders(false);
                 setMediaFilter('all');
+                setRatingFilter(null);
               }}
             >
               Clear filters

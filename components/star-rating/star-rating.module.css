@@ -1,0 +1,49 @@
+.stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  line-height: 0;
+}
+
+.xs { --star-size: 10px; }
+.sm { --star-size: 15px; }
+.md { --star-size: 22px; }
+
+.star {
+  display: inline-flex;
+  color: var(--star-empty, rgba(255, 255, 255, 0.22));
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.star svg {
+  width: var(--star-size);
+  height: var(--star-size);
+  fill: currentColor;
+}
+
+.gold .filled {
+  color: #fbbf24;
+}
+
+.accent .filled {
+  color: var(--accent-color);
+}
+
+/* ---- Interactive ---- */
+
+.button {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.button:hover {
+  transform: scale(1.15);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+  border-radius: 3px;
+}

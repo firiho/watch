@@ -3,7 +3,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useModal } from '@/context/modal-context';
+import { useRecommendations } from '@/context/recommendations-context';
+import StarRating from '@/components/star-rating/star-rating';
 import { SEARCH_DEBOUNCE_MS } from '@/lib/constants';
+import { ADMIN_NAME } from '@/lib/admin';
 import styles from './search.module.css';
 
 interface SearchResult {
@@ -25,6 +28,7 @@ const Search = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const { openModal } = useModal();
+  const { getRecommendation } = useRecommendations();
   const router = useRouter();
 
   // Close on outside click
@@ -137,32 +141,40 @@ const Search = () => {
                 </div>
               ) : results.length > 0 ? (
                 <ul className={styles.resultsList}>
-                  {results.map((item) => (
-                    <li 
-                      key={`${item.media_type}-${item.id}`} 
-                      className={styles.resultItem}
-                      onClick={() => {
-                        openModal(item.id, item.media_type);
-                        setIsOpen(false);
-                      }}
-                    >
-                      <div className={styles.resultPoster}>
-                        {item.image ? (
-                          <img src={item.image} alt={item.title} />
-                        ) : (
-                          <div className={styles.noPoster}>🎬</div>
-                        )}
-                      </div>
-                      <div className={styles.resultInfo}>
-                        <span className={styles.resultTitle}>{item.title}</span>
-                        <div className={styles.resultMeta}>
-                          <span className={styles.resultType}>{item.media_type === 'tv' ? 'TV' : 'Movie'}</span>
-                          {item.year && <span className={styles.resultYear}>{item.year}</span>}
-                          <span className={styles.resultRating}>★ {item.rating}</span>
+                  {results.map((item) => {
+                    const rec = getRecommendation(item.id, item.media_type);
+                    return (
+                      <li
+                        key={`${item.media_type}-${item.id}`} 
+                        className={styles.resultItem}
+                        onClick={() => {
+                          openModal(item.id, item.media_type);
+                          setIsOpen(false);
+                        }}
+                      >
+                        <div className={styles.resultPoster}>
+                          {item.image ? (
+                            <img src={item.image} alt={item.title} />
+                          ) : (
+                            <div className={styles.noPoster}>🎬</div>
+                          )}
                         </div>
-                      </div>
-                    </li>
-                  ))}
+                        <div className={styles.resultInfo}>
+                          <span className={styles.resultTitle}>{item.title}</span>
+                          <div className={styles.resultMeta}>
+                            <span className={styles.resultType}>{item.media_type === 'tv' ? 'TV' : 'Movie'}</span>
+                            {item.year && <span className={styles.resultYear}>{item.year}</span>}
+                            <span className={styles.resultRating}>★ {item.rating}</span>
+                            {rec && (
+                              <span className={styles.resultRec} title={`${ADMIN_NAME} rates this ${rec.stars}/5`}>
+                                Rec <StarRating value={rec.stars} size="xs" tone="accent" />
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : query.trim() ? (
                 <div className={styles.emptyState}>No results for &ldquo;{query}&rdquo;</div>

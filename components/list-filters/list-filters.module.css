@@ -1,0 +1,97 @@
+.bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.tab {
+  position: relative;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  font: inherit;
+  letter-spacing: 0.3px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.tab:hover,
+.tab.active {
+  color: var(--text-white);
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--accent-color);
+}
+
+.sep {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.ratingGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Empty stars a touch brighter than on cards, so they read as a control */
+.starFilter {
+  --star-empty: rgba(255, 255, 255, 0.38);
+}
+
+.iconToggle {
+  background: none;
+  border: none;
+  padding: 4px;
+  display: inline-flex;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.iconToggle:hover {
+  color: var(--text-white);
+}
+
+.iconToggle.active {
+  color: var(--accent-color);
+  filter: drop-shadow(0 0 5px rgba(100, 255, 218, 0.5));
+}
+
+.tab:focus-visible,
+.iconToggle:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.count {
+  margin-left: auto;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .bar {
+    width: 100%;
+  }
+}

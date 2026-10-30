@@ -43,6 +43,7 @@ export const metadata: Metadata = {
 
 import { AuthProvider } from "@/context/auth-context";
 import { ProfileProvider } from "@/context/profile-context";
+import { RecommendationsProvider } from "@/context/recommendations-context";
 import { WatchlistProvider } from "@/context/watchlist-context";
 import { ReminderProvider } from "@/context/reminder-context";
 import { ModalProvider } from "@/context/modal-context";
@@ -60,6 +61,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${firaCode.variable}`} suppressHydrationWarning>        <AuthProvider>
           <ProfileProvider>
+          <RecommendationsProvider>
           <WatchlistProvider>
             <ReminderProvider>
               <ModalProvider>
@@ -74,6 +76,7 @@ export default function RootLayout({
               </ModalProvider>
             </ReminderProvider>
           </WatchlistProvider>
+          </RecommendationsProvider>
           </ProfileProvider>
         </AuthProvider>
         <Analytics />

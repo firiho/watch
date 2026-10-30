@@ -223,6 +223,16 @@
   color: #fbbf24;
 }
 
+.resultRec {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-color);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
 /* States */
 .loadingState {
   display: flex;

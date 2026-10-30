@@ -7,8 +7,11 @@ import { useWatchlist } from '@/context/watchlist-context';
 import { useAuth } from '@/context/auth-context';
 import { useModal } from '@/context/modal-context';
 import { useReminders } from '@/context/reminder-context';
+import { useRecommendations } from '@/context/recommendations-context';
 import { useToggleReminder } from '@/hooks/use-toggle-reminder';
+import StarRating from '@/components/star-rating/star-rating';
 import { HOVER_OPEN_DELAY_MS, PROVIDER_FETCH_DELAY_MS } from '@/lib/constants';
+import { ADMIN_NAME } from '@/lib/admin';
 
 interface WatchProvider {
   id: number;
@@ -51,12 +54,15 @@ const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, desc
   const [isBtnHovered, setIsBtnHovered] = useState(false);
   const [isHD, setIsHD] = useState(initialIsHD);
 
-  const { isInList, addItem, removeItem } = useWatchlist();
+  const { isInList, addItem, removeItem, getRating, setRating } = useWatchlist();
+  const { getRecommendation } = useRecommendations();
   const { hasReminder } = useReminders();
   const { toggleReminder } = useToggleReminder();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { openModal } = useModal();
   const inList = isInList(id);
+  const myRating = getRating(id);
+  const rec = getRecommendation(id, mediaType);
   const formattedReleaseDate = formatDisplayDate(releaseDate);
 
   useEffect(() => {
@@ -158,6 +164,14 @@ const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, desc
             sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 220px"
           />
 
+          {/* Flambeau's public rating, on every card that has one */}
+          {rec && !isHovered && (
+            <span className={styles.recBadge} title={`${ADMIN_NAME} rates this ${rec.stars}/5`}>
+              <span className={styles.recLabel}>Rec</span>
+              <StarRating value={rec.stars} size="xs" tone="accent" />
+            </span>
+          )}
+
           {/* Providers float on the image */}
           {isHovered && (
             <div className={styles.providerOverlay}>
@@ -218,6 +232,27 @@ const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, desc
             )}
           </div>
 
+          {((rec && !isAdmin) || (user && inList)) && (
+            <div className={styles.ratings}>
+              {rec && !isAdmin && (
+                <div className={styles.ratingRow}>
+                  <span className={styles.ratingLabel}>{ADMIN_NAME}&apos;s rating</span>
+                  <StarRating value={rec.stars} size="sm" tone="accent" />
+                </div>
+              )}
+              {user && inList && (
+                <div className={styles.ratingRow}>
+                  <span className={styles.ratingLabel}>{isAdmin ? 'Recommend' : 'Your rating'}</span>
+                  <StarRating
+                    value={myRating}
+                    onChange={(stars) => setRating(id, stars)}
+                    label={isAdmin ? `Recommend ${title}` : `Rate ${title}`}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           {description && (
             <p className={styles.description}>{description}</p>
           )}
@@ -255,6 +290,10 @@ const MovieCard = ({ id, title, year, releaseDate, image, backdrop, rating, desc
               <p className={styles.simpleReleaseDate}>
                 {formattedReleaseDate}
               </p>
+            )}
+            {/* The admin's own rating already shows as the Rec badge */}
+            {user && !isAdmin && inList && myRating && (
+              <StarRating value={myRating} size="xs" className={styles.simpleRating} />
             )}
           </div>
         )}
