@@ -1,35 +1,49 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import styles from './collections.module.css'; // Reusing layout styles
+// Shares the always-loaded status-screen stylesheet (see the note at its top).
+import styles from '@/components/error-boundary/error-boundary.module.css';
+
+export const metadata: Metadata = {
+  title: 'Not found · Watch',
+};
 
 export default function NotFound() {
   return (
-    <div className={styles.page} style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      justifyContent: 'center', 
-      alignItems: 'center',
-      textAlign: 'center',
-      padding: '0 20px',
-      backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url("https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=1600&q=80")',
-      backgroundSize: 'cover',
-      backgroundPosition: 'center'
-    }}>
-      <h1 style={{ fontSize: '120px', fontWeight: '900', color: 'var(--accent-color)', marginBottom: '20px' }}>404</h1>
-      <h2 style={{ fontSize: '32px', color: 'var(--text-white)', marginBottom: '15px' }}>Lost in Space?</h2>
-      <p style={{ color: 'var(--text-secondary)', marginBottom: '40px', maxWidth: '500px' }}>
-        The page you are looking for seems to have vanished into the void. Let's get you back to the cinematic world.
-      </p>
-      <Link href="/" style={{
-        padding: '15px 30px',
-        border: '1px solid var(--accent-color)',
-        borderRadius: '4px',
-        color: 'var(--accent-color)',
-        fontFamily: 'var(--font-mono)',
-        fontSize: '14px',
-        transition: 'var(--transition)'
-      }} className="nav-link">
-        Back to Safety
-      </Link>
-    </div>
+    <main className={styles.nfPage}>
+      <div className={styles.nfBackdrop} aria-hidden="true" />
+      <div className={styles.nfBeam} aria-hidden="true" />
+
+      <div className={styles.nfContent}>
+        <p className={styles.nfEyebrow}>
+          <span className={styles.nfEyebrowDot} aria-hidden="true" />
+          error 404 · reel missing
+        </p>
+        <h1 className={styles.nfCode} aria-label="404">
+          <span>4</span>
+          <span className={styles.nfCodeMiddle}>0</span>
+          <span>4</span>
+        </h1>
+        <h2 className={styles.nfTitle}>Lost in Space?</h2>
+        <p className={styles.nfText}>
+          The page you are looking for seems to have vanished into the void. Let&apos;s get you back to the
+          cinematic world.
+        </p>
+        <div className={styles.nfActions}>
+          <Link href="/" className={styles.nfPrimary}>
+            Back to Safety
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </Link>
+          <Link href="/search" className={styles.nfSecondary}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            Search titles
+          </Link>
+        </div>
+      </div>
+    </main>
   );
 }

@@ -1,192 +1,384 @@
+/* =============================================================================
+ * Movie card
+ *
+ * Resting state: a poster with a legible title scrim. The whole card is one
+ * <button> (.hitArea) so tap / click / Enter / Space open the detail modal.
+ *
+ * Desktop (mouse) hover: after a short delay a wider panel (.panel) pops over
+ * the card with the backdrop, providers, ratings and My List. It animates with
+ * transform + opacity only, grows out of the card's center, and is nudged
+ * inward when the card sits at the edge of its rail.
+ *
+ * Width comes from `--card-w` (set by rails); grids stretch the card instead.
+ * ========================================================================== */
+
 .cardWrapper {
-  width: 250px;
+  --card-radius: var(--radius-sm);
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--card-w, 250px);
   max-width: 100%;
   aspect-ratio: 2 / 3;
   height: auto;
-  flex: 0 0 auto;
-  position: relative;
+  border-radius: var(--card-radius);
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
+
+/* Lift the whole card (and its panel) above neighbours while open / closing. */
+.cardWrapper[data-raised] {
+  z-index: 30;
+}
+
+/* ---- Resting poster --------------------------------------------------------- */
 
 .card {
-  background: #0a0a0a;
-  border-radius: 8px;
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  width: 100%;
-  height: 100%;
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   z-index: 1;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  isolation: isolate; /* keeps rounded clipping during transforms (Safari) */
+  border-radius: var(--card-radius);
+  background: var(--surface-2);
+  box-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.8);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
 }
 
-.card.expanded {
-  width: 150%;
-  height: auto;
-  left: -25%;
-  top: -10%;
-  z-index: 1000;
-  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.95);
-  background: #111111;
-  border-radius: 12px;
-  overflow: visible;
-}
-
-.card.expanded::before {
-  content: "";
+/* Hairline edge so dark posters don't melt into the black page. */
+.card::after {
+  content: '';
   position: absolute;
-  top: 0;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  pointer-events: none;
+}
+
+.posterImage {
+  object-fit: cover;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Press feedback. The short delay keeps a scroll that starts on a card from
+   flashing the press state; release eases back over --dur-fast. */
+.cardWrapper:active .card {
+  transform: scale(0.98);
+  transition-duration: var(--dur-instant), var(--dur-base);
+  transition-delay: 40ms, 0s;
+}
+
+.cardWrapper[data-expanded] .card {
+  transform: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cardWrapper:hover .card {
+    box-shadow:
+      0 18px 36px -16px rgba(0, 0, 0, 0.9),
+      0 0 0 1px var(--hairline-strong);
+  }
+}
+
+/* Full-card button (sits above the poster, below the hover panel). */
+.hitArea {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--card-radius);
+  background: transparent;
+  cursor: pointer;
+  -webkit-touch-callout: none;
+}
+
+/* ---- Resting title ---------------------------------------------------------- */
+
+.simpleTitle {
+  position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  background: #111111;
-  border-radius: 12px;
-  z-index: -1;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+  z-index: 2;
+  padding: 48px 12px 12px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.94) 0%,
+    rgba(0, 0, 0, 0.78) 30%,
+    rgba(0, 0, 0, 0.38) 64%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  pointer-events: none;
 }
 
-/* ---- Image ---- */
-
-.imageContainer {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 2/3;
+.title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.005em;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  transition: aspect-ratio 0.5s ease;
+  overflow-wrap: anywhere;
 }
 
-.expanded .imageContainer {
-  aspect-ratio: 16/9;
-  border-radius: 12px 12px 0 0;
+.simpleReleaseDate {
+  margin: 5px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.74);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.image {
-  width: 100%;
-  height: 100%;
+.simpleRating {
+  margin-top: 6px;
+}
+
+/* ---- Rec badge -------------------------------------------------------------- */
+
+.recBadge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: calc(100% - 16px);
+  padding: 4px 6px;
+  border-radius: var(--radius-xs);
+  background: rgba(0, 0, 0, 0.62);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  line-height: 1;
+  pointer-events: none;
+}
+
+.recLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--accent-color);
+}
+
+/* ---- Hover panel (desktop, mouse only) -------------------------------------- */
+
+.panel {
+  position: absolute;
+  top: -10%;
+  /* centered on the card, nudged inside the visible rail by --panel-shift (set in JS) */
+  left: calc(-25% + var(--panel-shift, 0px));
+  z-index: 3;
+  width: 150%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 30px 60px -12px rgba(0, 0, 0, 0.95);
+  cursor: pointer;
+  transform-origin: var(--panel-origin-x, 50%) 30%;
+  /* hidden (exit): quicker, ease-in; visibility flips after the fade */
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.88);
+  pointer-events: none;
+  transition:
+    opacity 150ms var(--ease-in),
+    transform 180ms var(--ease-in),
+    visibility 0s linear 180ms;
+}
+
+.cardWrapper[data-expanded] > .panel {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  pointer-events: auto;
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-slow) var(--ease-out),
+    visibility 0s;
+}
+
+.cardWrapper[data-raised] > .panel {
+  will-change: transform, opacity;
+}
+
+.panelMedia {
+  position: relative;
+  flex: none;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--surface-3);
+}
+
+/* Blurred poster while the backdrop loads (already cached: same src + sizes). */
+.panelPoster {
   object-fit: cover;
-  transition: all 0.3s ease;
+  filter: blur(18px) saturate(1.25);
+  transform: scale(1.2);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+/* No backdrop at all: show the poster itself, framed on the faces. */
+.panelMediaPoster .panelPoster {
+  filter: none;
+  transform: none;
+  opacity: 1;
+  object-position: center 22%;
+}
+
+.panelBackdrop {
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease-in-out);
+  pointer-events: none;
+}
+
+.panelBackdrop[data-loaded] {
+  opacity: 1;
+}
+
+.imageGradient {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 60%;
+  background: linear-gradient(to top, var(--surface-2) 0%, rgba(17, 18, 20, 0.6) 45%, rgba(17, 18, 20, 0) 100%);
+  pointer-events: none;
 }
 
 .topRightBadges {
   position: absolute;
   top: 10px;
   right: 10px;
+  z-index: 4;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  z-index: 10;
+  animation: fadeIn var(--dur-base) var(--ease-out) both;
 }
 
 .cardBadge {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: white;
-  font-size: 10px;
-  font-weight: 900;
-  padding: 3px 6px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  letter-spacing: 0.5px;
-  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.6);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.5px;
 }
 
 .hdBadge {
   background: var(--accent-color);
-  color: black;
   border-color: rgba(0, 0, 0, 0.1);
-  box-shadow: 0 0 10px rgba(100, 255, 218, 0.3);
+  color: var(--accent-ink);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.3);
 }
 
-.imageGradient {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 60%;
-  background: linear-gradient(to top, #111111, transparent);
-  pointer-events: none;
+.sdBadge {
+  color: rgba(255, 255, 255, 0.85);
 }
 
-/* ---- Provider overlay on image ---- */
-
+/* Providers float on the image */
 .providerOverlay {
   position: absolute;
-  bottom: 10px;
   right: 10px;
-  z-index: 5;
+  bottom: 10px;
+  z-index: 4;
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.providerLoading {
-  display: flex;
-  align-items: center;
-  padding: 2px;
+  max-width: calc(100% - 20px);
+  min-height: 36px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  background: rgba(0, 0, 0, 0.66);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  animation: fadeIn var(--dur-base) var(--ease-out) both;
 }
 
 .providerLogos {
   display: flex;
   gap: 6px;
+  overflow: hidden;
 }
 
 .providerLogo {
+  flex: none;
   width: 24px;
   height: 24px;
-  border-radius: 5px;
+  border-radius: 6px;
   object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .spinner {
+  display: block;
   width: 16px;
   height: 16px;
+  margin: 0 4px;
   border: 2px solid rgba(255, 255, 255, 0.15);
-  border-top-color: rgba(255, 255, 255, 0.6);
+  border-top-color: rgba(255, 255, 255, 0.7);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
 .noProviders {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
+  padding: 0 4px;
   font-family: var(--font-mono);
+  font-size: 10px;
   letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.55);
 }
 
-/* ---- Expanded Content ---- */
+/* ---- Panel content ---------------------------------------------------------- */
 
-.cardContent {
-  padding: 0;
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  transition: all 0.4s ease;
-}
-
-.expanded .cardContent {
-  max-height: 1000px;
-  opacity: 1;
-  padding: 16px 18px 18px;
+.panelContent {
+  padding: 12px 18px 18px;
 }
 
 .expandedTitle {
+  margin: 0 0 8px;
   font-size: 16px;
   font-weight: 700;
-  color: #fff;
-  margin-bottom: 8px;
   line-height: 1.3;
+  color: #fff;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -198,9 +390,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
-  font-size: 12px;
+  min-height: 28px;
+  margin-bottom: 10px;
   font-family: var(--font-mono);
+  font-size: 12px;
 }
 
 .rating {
@@ -217,44 +410,50 @@
 }
 
 .mediaTag {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: rgba(100, 255, 218, 0.7);
-  border: 1px solid rgba(100, 255, 218, 0.2);
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: 4px;
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(var(--accent-rgb), 0.75);
 }
 
 .bellIcon {
-  margin-left: auto;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: rgba(255, 255, 255, 0.4);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: none;
-  border: none;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  margin-right: -6px;
   padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
-.bellIcon:hover {
-  transform: scale(1.2);
-  color: var(--accent-color);
+.bellIcon:active {
+  transform: scale(0.9);
+  transition-duration: var(--dur-instant);
 }
 
 .bellIcon.active {
   color: var(--accent-color);
-  filter: drop-shadow(0 0 5px rgba(100, 255, 218, 0.5));
+  filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.5));
 }
 
 .description {
+  margin: 0 0 14px;
   font-size: 12px;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.55);
-  margin-bottom: 14px;
+  color: rgba(255, 255, 255, 0.58);
   display: -webkit-box;
   -webkit-line-clamp: 4;
   line-clamp: 4;
@@ -263,39 +462,11 @@
 }
 
 .releaseDateLine {
+  margin: 0 0 12px;
+  font-family: var(--font-mono);
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.48);
-  font-family: var(--font-mono);
   letter-spacing: 0.2px;
-  margin-bottom: 12px;
-}
-
-/* ---- Ratings ---- */
-
-.recBadge {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 4;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 6px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.72);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(100, 255, 218, 0.35);
-  line-height: 1;
-}
-
-.recLabel {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--accent-color);
+  color: rgba(255, 255, 255, 0.48);
 }
 
 .ratings {
@@ -320,161 +491,105 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
-.simpleRating {
-  margin-top: 5px;
-}
-
-/* ---- Add to List Button ---- */
+/* ---- My List button --------------------------------------------------------- */
 
 .addButton {
-  width: 100%;
-  padding: 10px 16px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 12px;
-  font-weight: 600;
-  font-family: var(--font-mono);
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  transition: all 0.2s ease;
+  width: 100%;
+  min-height: 40px;
+  padding: 10px 16px;
+  border-radius: var(--radius-xs);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
   letter-spacing: 0.5px;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
-.addButton:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
-  color: #fff;
+.addButton:active:not(:disabled) {
+  transform: scale(0.98);
+  transition-duration: var(--dur-instant);
 }
 
 .addButton:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .addButton.inList {
-  background: rgba(100, 255, 218, 0.08);
-  border-color: rgba(100, 255, 218, 0.25);
-  color: #64ffda;
-}
-
-.addButton.inList:hover {
-  background: rgba(255, 80, 80, 0.1);
-  border-color: rgba(255, 80, 80, 0.35);
-  color: #ff5050;
+  background: rgba(var(--accent-rgb), 0.08);
+  border-color: rgba(var(--accent-rgb), 0.25);
+  color: var(--accent-color);
 }
 
 .btnSpinner {
+  display: inline-block;
   width: 14px;
   height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.15);
-  border-top-color: white;
+  border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-  display: inline-block;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bellIcon:hover {
+    color: var(--accent-color);
+    background: rgba(var(--accent-rgb), 0.1);
+  }
+
+  .addButton:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #fff;
+  }
+
+  .addButton.inList:hover:not(:disabled) {
+    background: rgba(255, 80, 80, 0.1);
+    border-color: rgba(255, 80, 80, 0.35);
+    color: #ff5050;
+  }
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-/* ---- Simple (non-hovered) title ---- */
-
-.simpleTitle {
-  padding: 12px;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
-  transition: opacity 0.3s;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
 }
 
-.expanded .simpleTitle {
-  opacity: 0;
-}
-
-.title {
-  font-size: 15px;
-  font-weight: 600;
-  color: white;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.simpleReleaseDate {
-  margin-top: 4px;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.68);
-  font-family: var(--font-mono);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+/* ---- Phones ----------------------------------------------------------------- */
 
 @media (max-width: 768px) {
-  .cardWrapper {
-    width: clamp(148px, 40vw, 196px);
-  }
-
   .simpleTitle {
-    padding: 10px;
+    padding: 40px 10px 10px;
   }
 
   .title {
     font-size: 14px;
+    line-height: 1.22;
   }
 
-  .providerOverlay {
-    padding: 5px 8px;
-    gap: 5px;
-    max-width: calc(100% - 20px);
-    overflow: hidden;
-  }
-
-  .providerLogos {
+  .recBadge {
+    top: 6px;
+    left: 6px;
     gap: 4px;
-    flex-wrap: wrap;
-  }
-
-  .providerLogo {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-  }
-}
-
-@media (max-width: 520px) {
-  .cardWrapper {
-    width: clamp(136px, 42vw, 172px);
-  }
-
-  .card.expanded {
-    width: 100%;
-    left: 0;
-    top: 0;
-    border-radius: 8px;
-  }
-
-  .card.expanded::before {
-    border-radius: 8px;
-  }
-
-  .expanded .imageContainer {
-    border-radius: 8px 8px 0 0;
-  }
-
-  .expanded .cardContent {
-    padding: 12px 12px 14px;
-  }
-
-  .meta {
-    gap: 6px;
-    flex-wrap: wrap;
+    padding: 3px 5px;
   }
 }

@@ -1,12 +1,30 @@
 .footer {
+  position: relative;
   display: flex;
-  justify-content: center;
-  align-items: center;
   flex-direction: column;
-  padding: 30px 20px;
-  text-align: center;
+  align-items: center;
+  justify-content: center;
+  /* No tab bar (desktop / tab bar hidden): clear the home indicator ourselves.
+     With the tab bar, body already reserves its height and this resolves to 0. */
+  padding:
+    28px
+    calc(20px + var(--safe-right))
+    calc(28px + max(0px, var(--safe-bottom) - var(--tabbar-offset)))
+    calc(20px + var(--safe-left));
   background-color: var(--bg-color);
-  border-top: 1px solid var(--bg-color-lighter);
+  text-align: center;
+}
+
+/* Hairline that fades out toward the edges instead of a hard full-width rule. */
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(720px, 86%);
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--hairline-strong) 30%, var(--hairline-strong) 70%, transparent);
+  transform: translateX(-50%);
 }
 
 .container {
@@ -16,45 +34,98 @@
   gap: 10px;
 }
 
-.heartIcon {
-  width: 16px;
-  height: 16px;
-  margin: 0 4px;
-  color: #f43f5e; /* text-destructive / rose-500 */
-  cursor: pointer;
-  transition: var(--transition);
-  display: inline-block;
-  vertical-align: middle;
-  position: relative;
-  top: -1px; /* Subtle adjustment if needed */
-}
-
-.heartIcon:hover {
-  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: .7;
-    transform: scale(1.1);
-  }
-}
-
 .credit {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  color: var(--text-secondary);
+  gap: 2px 6px;
+  margin: 0;
   font-family: var(--font-mono);
   font-size: 12px;
-  gap: 4px;
+  color: var(--text-secondary);
 }
 
-.credit a:hover {
-  color: var(--accent-color);
+.heartIcon {
+  display: inline-block;
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: #f43f5e;
+  transform-origin: 50% 60%;
+}
+
+.link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 2px;
+  color: var(--text-primary);
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+/* 44px tap target around a 12px label. */
+.link::before {
+  content: '';
+  position: absolute;
+  inset: -6px -8px;
+}
+
+.link::after {
+  content: '';
+  position: absolute;
+  right: 2px;
+  bottom: 6px;
+  left: 2px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.35;
+  transform-origin: left center;
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+
+.link:active {
+  transform: scale(0.96);
+  transition-duration: var(--dur-instant);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .link:hover {
+    color: var(--accent-color);
+  }
+
+  .link:hover::after {
+    opacity: 1;
+  }
+
+  .footer:hover .heartIcon {
+    animation: heartbeat 1.4s var(--ease-in-out) infinite;
+  }
+}
+
+@keyframes heartbeat {
+  0%, 40%, 100% {
+    transform: scale(1);
+  }
+  12% {
+    transform: scale(1.22);
+  }
+  24% {
+    transform: scale(0.96);
+  }
+  32% {
+    transform: scale(1.12);
+  }
+}
+
+@media (max-width: 768px) {
+  .footer {
+    padding-top: 24px;
+    padding-bottom: calc(22px + max(0px, var(--safe-bottom) - var(--tabbar-offset)));
+  }
 }

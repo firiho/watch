@@ -1,0 +1,174 @@
+.form {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+
+.form:focus-within {
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--accent-rgb), 0.55),
+    0 0 0 4px rgba(var(--accent-rgb), 0.12);
+}
+
+.leading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 46px;
+  height: 100%;
+  color: var(--text-muted);
+  pointer-events: none;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.form:focus-within .leading {
+  color: var(--accent-color);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 12px 0 0;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text-white);
+  caret-color: var(--accent-color);
+  font-family: var(--font-sans);
+  font-size: 16px; /* never below 16px: iOS zooms on focus */
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* The form draws the focus ring. */
+.input:focus-visible {
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+/* We render our own clear button. */
+.input::-webkit-search-cancel-button,
+.input::-webkit-search-decoration {
+  display: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.clear {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 44px;
+  height: 44px;
+  margin-right: 2px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  animation: pop var(--dur-fast) var(--ease-out) both;
+}
+
+.clearDot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.24);
+  color: rgba(0, 0, 0, 0.78);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+
+.clear:active .clearDot {
+  transform: scale(0.88);
+  transition-duration: var(--dur-instant);
+}
+
+/* "Press Enter" hint, desktop only, while the text differs from the results. */
+.hint {
+  display: none;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--accent-rgb), 0.22);
+  border-top-color: var(--accent-color);
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .form:hover:not(:focus-within) {
+    box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  }
+
+  .clear:hover .clearDot {
+    background: rgba(255, 255, 255, 0.36);
+  }
+
+  .hint {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 22px;
+    margin-right: 4px;
+    padding: 0 6px;
+    border-radius: var(--radius-xs);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 0 0 1px var(--hairline);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+
+  .form:focus-within .hint {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .form {
+    height: 46px;
+  }
+
+  .leading {
+    flex-basis: 42px;
+  }
+}

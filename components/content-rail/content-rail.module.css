@@ -1,57 +1,116 @@
+/* =============================================================================
+ * Content rail (Top-10 style row with big outlined numbers)
+ *
+ * Desktop: the rail is a horizontal scroll container, so it clips vertically.
+ * The hover-expanded card needs room above/below the posters, so the rail is
+ * padded generously and the padding is cancelled with negative margins: the
+ * room exists for the expanded card, but no empty band shows in the layout.
+ *
+ * Phones: one-line header with "See all", edge-to-edge bleed aligned to the
+ * page gutter, snap scrolling, scaled-down numbers in a lane beside each card.
+ * ========================================================================== */
+
 .section {
-  padding: 50px 0;
-  width: 100%;
   display: flex;
   justify-content: center;
+  width: 100%;
+  padding: 22px 0;
 }
 
 .railContainer {
+  position: relative;
   width: 90%;
   max-width: 1600px;
-  position: relative;
 }
 
+/* ---- Header ----------------------------------------------------------------- */
+
 .sectionHeader {
+  position: relative;
+  z-index: 2; /* stays clickable above the rail's (invisible) overflow room */
   display: flex;
   align-items: center;
-  margin-bottom: 40px;
+  gap: 20px;
+  margin-bottom: 14px;
 }
 
 .sectionTitle {
+  margin: 0;
   font-size: clamp(26px, 5vw, 32px);
   white-space: nowrap;
-  margin-right: 20px;
 }
 
 .railLine {
+  flex: 0 1 300px;
   height: 1px;
-  width: 100%;
-  max-width: 300px;
   background-color: var(--bg-color-lighter);
 }
 
+.seeAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0 2px 0 12px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--accent-color);
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+
+.seeAll svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+/* iOS-style link press: dim, no scale */
+.seeAll:active {
+  opacity: 0.55;
+  transition-duration: var(--dur-instant);
+}
+
+/* ---- Rail ------------------------------------------------------------------- */
+
 .railWrapper {
+  --room-top: 56px; /* expanded card starts 10% above the poster + its shadow */
+  --room-bottom: 224px; /* expanded card (tallest: signed in, rated, in My List) + shadow */
+  --rail-tail: 28px; /* visible space under the posters (numbers dip into it) */
+  --rail-gap: 80px;
   position: relative;
+  display: flow-root; /* contains the rail's negative margins */
   width: 100%;
+  overflow-x: clip; /* clip sideways, let the expanded card overflow vertically */
 }
 
 .rail {
+  position: relative;
   display: flex;
-  gap: 80px;
+  gap: var(--rail-gap);
+  margin-top: calc(-1 * var(--room-top));
+  margin-bottom: calc(var(--rail-tail) - var(--room-bottom));
+  padding-top: var(--room-top);
+  padding-bottom: var(--room-bottom);
   overflow-x: auto;
-  overflow-y: visible; 
-  padding: 100px 0 150px; /* Increased vertical padding */
+  overflow-y: hidden; /* never a vertical scroller: wheel goes to the page */
+  overscroll-behavior-x: contain; /* no browser back/forward swipe at the ends */
+  scroll-behavior: smooth;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  cursor: grab;
-  scroll-behavior: smooth;
-  position: relative;
 }
 
-.railWrapper {
-  position: relative;
-  width: 100%;
-  overflow-x: clip; /* Clip horizontally but allow vertical overflow for expansion */
+.rail::-webkit-scrollbar {
+  display: none;
 }
 
 .railSpacer {
@@ -61,107 +120,184 @@
 .rail.dragging {
   cursor: grabbing;
   scroll-behavior: auto;
+  scroll-snap-type: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
-.rail::-webkit-scrollbar {
-  display: none;
+/* Cards stop reacting (and collapse) while the rail is being dragged. */
+.rail.dragging > * {
+  pointer-events: none;
 }
 
 .itemWithNumber {
   position: relative;
   display: flex;
-  align-items: flex-end;
   flex: 0 0 auto;
-  transition: z-index 0.3s ease;
-}
-
-.itemWithNumber:hover {
-  z-index: 100;
+  align-items: flex-end;
 }
 
 .bigNumber {
+  position: absolute;
+  left: -55px; /* peeks out from behind the poster */
+  bottom: -20px;
+  z-index: 0;
   font-size: clamp(140px, 15vw, 190px);
   font-weight: 900;
   line-height: 1;
   color: transparent;
   -webkit-text-stroke: 2px rgba(255, 255, 255, 0.15);
-  position: absolute;
-  left: -55px; /* Shifted left to peek out */
-  bottom: -20px;
-  z-index: 0;
+  -webkit-user-select: none;
   user-select: none;
   pointer-events: none;
-  transition: all 0.4s ease;
+  transition:
+    -webkit-text-stroke-color var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
 }
 
-.itemWithNumber:hover .bigNumber {
-  -webkit-text-stroke: 2px var(--accent-color);
-  color: rgba(100, 255, 218, 0.05); /* Subtle inner glow */
-  transform: translateX(-5px);
+/* "10": tighter so the "1" reads in the gap and the "0" tucks under the poster */
+.bigNumber.twoDigit {
+  left: -78px;
+  letter-spacing: -0.09em;
 }
+
+/* ---- Arrows (desktop, hover devices) ---------------------------------------- */
 
 .navArea {
   position: absolute;
   top: 0;
-  height: 100%;
-  width: 80px;
+  bottom: var(--rail-tail);
   z-index: 10;
   display: flex;
-  justify-content: center;
   align-items: center;
-  cursor: pointer;
-  border: none;
-  padding: 0;
+  justify-content: flex-start;
+  width: 84px;
+  padding: 0 0 0 10px;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.88) 10%, rgba(0, 0, 0, 0));
   color: inherit;
   font: inherit;
+  cursor: pointer;
   opacity: 0;
-  transition: all 0.3s ease;
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.8), transparent);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+  transition: opacity var(--dur-base) var(--ease-out);
 }
 
+/* Inside the wrapper's clip edge so the button never gets shaved. */
 .prevArea {
-  left: -20px;
+  left: 0;
 }
 
 .nextArea {
-  right: -20px;
-  background: linear-gradient(to left, rgba(0, 0, 0, 0.8), transparent);
+  right: 0;
+  justify-content: flex-end;
+  padding: 0 10px 0 0;
+  background: linear-gradient(to left, rgba(0, 0, 0, 0.88) 10%, rgba(0, 0, 0, 0));
 }
 
-.railWrapper:hover .navArea {
-  opacity: 1;
-}
-
-.navArrow {
+.navButton {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--hairline-strong);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  box-shadow: var(--shadow-sm);
   color: var(--text-white);
-  font-size: 50px;
-  font-weight: 200;
-  transition: var(--transition);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
 }
 
-.navArea:hover .navArrow {
-  color: var(--accent-color);
-  transform: scale(1.2);
+.navButton svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
+
+.navArea:active .navButton {
+  transform: scale(0.92);
+  transition-duration: var(--dur-instant);
+}
+
+.navArea:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+  outline-offset: -4px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .railWrapper:hover .navArea:not([aria-disabled='true']) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .navArea:hover .navButton {
+    transform: scale(1.08);
+    color: var(--accent-color);
+    border-color: rgba(var(--accent-rgb), 0.45);
+  }
+
+  .itemWithNumber:hover .bigNumber {
+    -webkit-text-stroke-color: var(--accent-color);
+    color: rgba(var(--accent-rgb), 0.05); /* subtle inner glow */
+    transform: translateX(-5px);
+  }
+
+  .seeAll:hover {
+    color: var(--text-white);
+  }
+
+  .seeAll:hover svg {
+    transform: translateX(3px);
+  }
+}
+
+@media (hover: none) {
+  .navArea {
+    display: none;
+  }
+}
+
+/* Touch tablets get the desktop rail, so give them snap paging too. Items snap
+   where the first one rests (after the spacer), leaving room for its number. */
+@media (hover: none) and (pointer: coarse) and (min-width: 769px) {
+  .rail {
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: calc(40px + var(--rail-gap));
+    scroll-behavior: auto;
+  }
+
+  .itemWithNumber {
+    scroll-snap-align: start;
+  }
+}
+
+/* ---- Tablet ----------------------------------------------------------------- */
 
 @media (max-width: 1080px) {
   .section {
-    padding: 32px 0;
+    padding: 22px 0;
   }
 
+  /* align with the hero text, which sits on the gutter at this size */
   .railContainer {
-    width: calc(100% - 40px);
+    width: calc(100% - 2 * var(--gutter));
   }
 
-  .sectionHeader {
-    margin-bottom: 24px;
-  }
-
-  .rail {
-    gap: 52px;
-    padding: 70px 0 110px;
+  .railWrapper {
+    --rail-gap: 52px;
+    --rail-tail: 22px;
   }
 
   .bigNumber {
@@ -170,61 +306,104 @@
     -webkit-text-stroke-width: 1.5px;
   }
 
+  .bigNumber.twoDigit {
+    left: -58px;
+  }
+
   .navArea {
-    width: 56px;
+    width: 68px;
   }
 }
 
+/* ---- Phones ----------------------------------------------------------------- */
+
 @media (max-width: 768px) {
+  .section {
+    padding: 10px 0 12px;
+  }
+
   .railContainer {
     width: 100%;
-    padding: 0 16px;
+    padding-left: calc(var(--gutter) + var(--safe-left));
+    padding-right: calc(var(--gutter) + var(--safe-right));
   }
 
   .sectionHeader {
-    margin-bottom: 16px;
     gap: 12px;
+    margin-bottom: 2px;
   }
 
   .sectionTitle {
-    font-size: clamp(20px, 6vw, 24px);
-    margin-right: 0;
-    white-space: normal;
-    line-height: 1.1;
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 21px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-white);
   }
 
   .railLine {
-    max-width: none;
+    display: none;
+  }
+
+  .seeAll {
+    flex: none;
+    margin-right: -2px;
+    font-size: 13px;
   }
 
   .railWrapper {
+    --room-top: 6px; /* press-scale headroom only: no hover panel on touch */
+    --room-bottom: 14px;
+    --rail-tail: 4px;
+    --rail-gap: 10px;
     overflow: visible;
   }
 
+  /* Edge-to-edge bleed, aligned to the page gutter. */
   .rail {
-    gap: 12px;
-    padding: 14px 0 20px;
-    scroll-snap-type: x proximity;
-    cursor: auto;
+    --card-w: clamp(114px, 30.5vw, 140px);
+    margin-left: calc(-1 * (var(--gutter) + var(--safe-left)));
+    margin-right: calc(-1 * (var(--gutter) + var(--safe-right)));
+    padding-left: calc(var(--gutter) + var(--safe-left));
+    padding-right: 0;
+    scroll-padding-inline: calc(var(--gutter) + var(--safe-left));
+    scroll-snap-type: x mandatory;
+    scroll-behavior: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
+  .railSpacer:first-child {
+    display: none;
+  }
+
+  /* trailing spacer + gap = gutter, so the last card ends on the gutter line */
+  .railSpacer:last-child {
+    flex-basis: max(1px, calc(var(--gutter) + var(--safe-right) - var(--rail-gap)));
+  }
+
+  /* Each item reserves a lane for its number; the poster overlaps its right part. */
   .itemWithNumber {
+    padding-left: 32px;
     scroll-snap-align: start;
   }
 
-  .itemWithNumber:hover {
-    z-index: auto;
+  .bigNumber,
+  .bigNumber.twoDigit {
+    left: -3px;
+    bottom: -3px;
+    font-size: 96px;
+    letter-spacing: -0.05em;
+    color: rgba(255, 255, 255, 0.03);
+    -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.32);
   }
 
-  .bigNumber {
-    font-size: clamp(72px, 20vw, 110px);
-    left: -16px;
-    bottom: -8px;
-    -webkit-text-stroke-width: 1px;
-  }
-
-  .railSpacer {
-    flex-basis: 2px;
+  .bigNumber.twoDigit {
+    left: -8px;
+    letter-spacing: -0.12em;
   }
 
   .navArea {

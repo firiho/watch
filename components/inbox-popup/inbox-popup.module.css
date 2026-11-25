@@ -1,43 +1,96 @@
+/* Reminder notifications. Desktop: a stack under the top-right of the navbar.
+   Phones: thumb-reachable, just above the tab bar (or the home indicator). */
+
 .stack {
   position: fixed;
-  top: 76px;
-  right: 16px;
+  top: calc(var(--nav-h) + var(--safe-top) + 8px);
+  right: calc(16px + var(--safe-right));
   z-index: 1900;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-width: 340px;
-  width: calc(100vw - 32px);
+  width: min(352px, calc(100vw - 32px));
   pointer-events: none;
 }
 
-.stack > * {
+.slot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.slot > * {
   pointer-events: auto;
 }
 
-.card {
-  background: rgba(14, 14, 14, 0.96);
-  border: 1px solid rgba(100, 255, 218, 0.28);
-  border-radius: 12px;
-  padding: 14px 14px 12px;
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  animation: slideIn 0.25s ease-out;
+.leaving {
+  pointer-events: none;
+  animation: slotOut 220ms var(--ease-in) forwards;
 }
 
-@keyframes slideIn {
+.leaving > * {
+  pointer-events: none;
+}
+
+@keyframes slotOut {
+  to {
+    opacity: 0;
+    transform: translate3d(28px, 0, 0) scale(0.97);
+  }
+}
+
+@keyframes slotOutMobile {
+  to {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.96);
+  }
+}
+
+/* ---- Card ---- */
+
+.card {
+  position: relative;
+  width: 100%;
+  padding: 14px 14px 12px 16px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(27, 28, 32, 0.9), rgba(13, 13, 15, 0.94));
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  /* Vertical pans still scroll the page; horizontal ones are ours (swipe to minimize). */
+  touch-action: pan-y;
+  animation: cardIn 380ms var(--ease-out) backwards;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: -70px;
+  left: -50px;
+  width: 200px;
+  height: 150px;
+  background: radial-gradient(closest-side, rgba(var(--accent-rgb), 0.13), transparent);
+  pointer-events: none;
+}
+
+@keyframes cardIn {
   from {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translate3d(18px, 0, 0) scale(0.98);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+}
+
+@keyframes cardInMobile {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.98);
   }
 }
 
 .cardHeader {
+  position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -48,108 +101,165 @@
 .headerText {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
 }
 
 .kicker {
-  font-size: 10.5px;
-  letter-spacing: 0.7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(100, 255, 218, 0.85);
-  font-weight: 700;
+  color: var(--accent-color);
+}
+
+.liveDot {
+  position: relative;
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-color);
+}
+
+.liveDot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--accent-color);
+  animation: livePulse 2.2s var(--ease-out) infinite;
+}
+
+@keyframes livePulse {
+  from {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(3.2);
+  }
 }
 
 .cardTitle {
-  font-size: 14.5px;
-  font-weight: 700;
-  color: #fff;
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 15px;
+  font-weight: 650;
   line-height: 1.3;
+  text-align: left;
+  color: var(--text-white);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
-  text-align: left;
-  background: none;
-  border: none;
-  padding: 0;
   cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
 }
 
-.cardTitle:hover {
-  color: #d8fff5;
-  text-decoration: underline;
+/* Text buttons dim while pressed, like iOS. */
+.cardTitle:active,
+.pillName:active {
+  opacity: 0.6;
+  transition: opacity var(--dur-instant) var(--ease-out);
 }
 
 .iconBtn {
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.85);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
   flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--hairline-strong);
+  color: rgba(255, 255, 255, 0.82);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
-.iconBtn:hover {
-  background: rgba(255, 255, 255, 0.12);
+.iconBtn::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+}
+
+.iconBtn:active {
+  transform: scale(0.9);
+  transition-duration: var(--dur-instant);
 }
 
 .cardBody {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
   flex-wrap: wrap;
+  gap: 8px 10px;
+  margin-bottom: 12px;
 }
 
 .epBadge {
-  font-family: var(--font-mono, monospace);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: rgba(100, 255, 218, 0.16);
-  border: 1px solid rgba(100, 255, 218, 0.45);
-  color: #d8fff5;
   flex-shrink: 0;
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(var(--accent-rgb), 0.14);
+  border: 1px solid rgba(var(--accent-rgb), 0.42);
+  color: #d8fff5;
 }
 
 .bodyText {
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 13px;
-  line-height: 1.4;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.76);
 }
 
 .cardActions {
+  position: relative;
   display: flex;
   gap: 8px;
 }
 
 .actionBtn {
   flex: 1;
+  height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 9px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--hairline-strong);
   background: rgba(255, 255, 255, 0.05);
-  color: #fff;
-  font-size: 12.5px;
-  font-weight: 700;
+  color: var(--text-white);
+  font-size: 13px;
+  font-weight: 650;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
-.actionBtn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
+.actionBtn:active:not(:disabled) {
+  transform: scale(var(--press-scale));
+  transition-duration: var(--dur-instant);
 }
 
 .actionBtn:disabled {
@@ -158,82 +268,101 @@
 }
 
 .primary {
-  background: rgba(100, 255, 218, 0.18);
-  border-color: rgba(100, 255, 218, 0.55);
-  color: #d8fff5;
+  border-color: transparent;
+  background: var(--accent-color);
+  color: var(--accent-ink);
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
-.primary:hover:not(:disabled) {
-  background: rgba(100, 255, 218, 0.28);
+@media (hover: hover) and (pointer: fine) {
+  .cardTitle:hover {
+    color: #d8fff5;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .iconBtn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+  }
+
+  .actionBtn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .primary:hover:not(:disabled) {
+    background: #82ffe3;
+  }
+
+  .pillName:hover {
+    color: #d8fff5;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .pillExpand:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+  }
 }
+
+/* ---- Minimized pill ---- */
 
 .pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(14, 14, 14, 0.96);
-  border: 1px solid rgba(100, 255, 218, 0.4);
-  color: #fff;
-  font-size: 12.5px;
-  font-weight: 600;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  align-self: flex-end;
   max-width: 100%;
-  animation: slideIn 0.2s ease-out;
+  min-height: 36px;
+  padding: 0 4px 0 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(16, 16, 18, 0.92);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  border: 1px solid rgba(var(--accent-rgb), 0.38);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.42);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  animation: pillIn 300ms var(--ease-spring) backwards;
+}
+
+@keyframes pillIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
 }
 
 .pillDot {
+  flex-shrink: 0;
   width: 7px;
   height: 7px;
-  border-radius: 999px;
-  background: rgba(100, 255, 218, 0.95);
-  flex-shrink: 0;
-  box-shadow: 0 0 0 4px rgba(100, 255, 218, 0.18);
-}
-
-.pillText {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
+  border-radius: 50%;
+  background: var(--accent-color);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.18);
 }
 
 .pillName {
+  /* Fill the pill's height so the whole strip is the tap target. */
+  align-self: stretch;
+  display: block;
+  min-width: 0;
+  max-width: 180px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  line-height: 34px;
   color: rgba(255, 255, 255, 0.92);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 180px;
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
   cursor: pointer;
-}
-
-.pillName:hover {
-  color: #d8fff5;
-  text-decoration: underline;
-}
-
-.pillExpand {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.6);
-  flex-shrink: 0;
-}
-
-.pillExpand:hover {
-  color: #fff;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
 }
 
 .pillSep {
@@ -241,24 +370,142 @@
 }
 
 .pillEp {
-  font-family: var(--font-mono, monospace);
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
   color: #d8fff5;
-  font-size: 11.5px;
+}
+
+.pillExpand {
+  position: relative;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: rgba(255, 255, 255, 0.62);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.pillExpand:active {
+  transform: scale(0.88);
+  transition-duration: var(--dur-instant);
 }
 
 .pillChev {
-  color: rgba(255, 255, 255, 0.6);
   flex-shrink: 0;
+  transition: transform var(--dur-base) var(--ease-out);
 }
 
-@media (max-width: 480px) {
+/* ---- Phones ---- */
+
+@media (max-width: 768px) {
   .stack {
-    top: 68px;
-    right: 12px;
-    max-width: calc(100vw - 24px);
+    top: auto;
+    bottom: calc(max(var(--tabbar-offset), var(--safe-bottom)) + 12px);
+    left: calc(12px + var(--safe-left));
+    right: calc(12px + var(--safe-right));
+    width: auto;
+    /* Newest sits closest to the thumb; older ones stack upward. */
+    flex-direction: column-reverse;
+    transition:
+      translate var(--dur-base) var(--ease-out),
+      opacity var(--dur-fast) var(--ease-out),
+      transform var(--dur-fast) var(--ease-out),
+      visibility 0s;
+  }
+
+  /* Make room for a toast (they share the bottom edge on phones). */
+  :global(body:has([data-sonner-toast])) .stack {
+    translate: 0 -68px;
+  }
+
+  /* Step aside while a sheet / modal / menu has the screen. */
+  :global(html[data-scroll-locked]) .stack {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+    visibility: hidden;
+    transition:
+      translate var(--dur-base) var(--ease-out),
+      opacity var(--dur-fast) var(--ease-in),
+      transform var(--dur-fast) var(--ease-in),
+      visibility 0s linear var(--dur-fast);
+  }
+
+  .leaving {
+    animation-name: slotOutMobile;
   }
 
   .card {
-    padding: 12px 12px 10px;
+    padding: 14px 14px 12px 16px;
+    border-radius: 20px;
+    animation-name: cardInMobile;
+    animation-duration: 460ms;
+    animation-timing-function: var(--ease-ios);
+  }
+
+  .cardTitle {
+    font-size: 16px;
+  }
+
+  .bodyText {
+    font-size: 14px;
+  }
+
+  .iconBtn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .iconBtn::before {
+    inset: -7px;
+  }
+
+  .actionBtn {
+    height: 44px;
+    border-radius: 12px;
+    font-size: 14.5px;
+  }
+
+  .pill {
+    min-height: 44px;
+    padding: 0 6px 0 14px;
+    font-size: 14px;
+  }
+
+  .pillName {
+    max-width: 52vw;
+    line-height: 42px;
+  }
+
+  .pillExpand {
+    width: 34px;
+    height: 34px;
+  }
+
+  .pillExpand::before {
+    content: '';
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+  }
+
+  /* ~44px-tall target for the title without changing the layout. */
+  .cardTitle {
+    padding: 11px 0;
+    margin: -11px 0;
+  }
+
+  /* The card opens upward from the bottom stack. */
+  .pillChev {
+    transform: rotate(180deg);
   }
 }

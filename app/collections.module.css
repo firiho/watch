@@ -1,175 +1,419 @@
+/* =============================================================================
+ * Collection pages: Movies, TV Shows, Search, Recs, My List.
+ *
+ * Also shared with files outside this area, so keep these class names stable:
+ *   .page / .title / .description   → app/settings/page.tsx, app/not-found.tsx
+ *   .grid / .noResults*             → components/discover-grid/discover-grid.tsx
+ * ========================================================================== */
+
 .page {
-  padding: 140px clamp(18px, 5vw, 100px) 80px;
+  /* Side padding, exposed so edge-to-edge scrollers can bleed past it. */
+  --page-x: clamp(18px, 5vw, 100px);
   min-height: 100vh;
+  padding-top: calc(var(--nav-h) + var(--safe-top) + 70px);
+  padding-bottom: 80px;
+  padding-left: calc(var(--page-x) + var(--safe-left));
+  padding-right: calc(var(--page-x) + var(--safe-right));
 }
 
-/* ---- Discover Header ---- */
+/* ---- Header ---------------------------------------------------------------- */
 
 .discoverHeader {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-bottom: 50px;
   gap: 40px;
+  margin-bottom: 50px;
   padding-bottom: 40px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .titleGroup {
   flex: 1;
+  min-width: 0;
 }
 
 .title {
+  margin: 0 0 12px;
   font-size: 52px;
   font-weight: 800;
-  margin-bottom: 12px;
-  color: var(--text-white);
-  letter-spacing: -1px;
   line-height: 1;
+  letter-spacing: -1px;
+  color: var(--text-white);
 }
 
 .description {
-  font-size: 15px;
-  color: var(--text-secondary);
   max-width: 480px;
+  margin: 0;
+  font-size: 15px;
   line-height: 1.7;
+  color: var(--text-secondary);
+  overflow-wrap: break-word; /* long search queries */
 }
 
 .filterWrapper {
-  margin-bottom: 5px;
+  flex: 0 1 auto;
+  min-width: 0;
+  /* Optically center the controls on the description's last line. */
+  margin-bottom: -5px;
 }
 
-/* ---- Grid ---- */
+/* Search field slot (right side of the header on desktop) */
+.searchField {
+  flex: 0 1 420px;
+  width: 420px;
+  max-width: 100%;
+}
+
+/* ---- Grid ------------------------------------------------------------------ */
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 30px;
+  grid-template-columns: repeat(var(--grid-cols, 5), minmax(0, 1fr));
+  gap: var(--grid-gap, 30px);
   margin-top: 10px;
   align-items: start;
 }
 
-.grid > * {
+/* Cards and skeletons carry fixed widths for rails; in the grid they fill the
+   track. Doubled class so this wins regardless of stylesheet order. */
+.grid.grid > * {
   width: 100%;
   max-width: none;
   min-width: 0;
 }
 
-/* ---- Results count ---- */
+/* Soft entrance as results (or the next page) arrive. `backwards` fill only:
+   once finished, no transform/opacity lingers to trap the hover-expanded card
+   in its own stacking context. */
+.grid > * {
+  animation: gridItemIn var(--dur-slow) var(--ease-out) backwards;
+}
+
+.grid > :nth-child(2) { animation-delay: 25ms; }
+.grid > :nth-child(3) { animation-delay: 50ms; }
+.grid > :nth-child(4) { animation-delay: 75ms; }
+.grid > :nth-child(5) { animation-delay: 100ms; }
+.grid > :nth-child(6) { animation-delay: 125ms; }
+.grid > :nth-child(7) { animation-delay: 150ms; }
+.grid > :nth-child(8) { animation-delay: 175ms; }
+.grid > :nth-child(9) { animation-delay: 200ms; }
+.grid > :nth-child(10) { animation-delay: 225ms; }
+
+@keyframes gridItemIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* The global reduced-motion rule shortens durations, not delays. */
+@media (prefers-reduced-motion: reduce) {
+  .grid > * {
+    animation: none;
+  }
+}
+
+/* ---- Results meta (search) ------------------------------------------------- */
 
 .resultsMeta {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   margin-bottom: 30px;
   font-family: var(--font-mono);
   font-size: 12px;
+  letter-spacing: 0.02em;
   color: var(--text-secondary);
+}
+
+.resultsLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resultsCount {
+  color: var(--accent-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.resultsQuery {
+  color: var(--text-white);
 }
 
 .resultsDivider {
   flex: 1;
+  min-width: 24px;
   height: 1px;
-  background: rgba(255, 255, 255, 0.04);
+  background: linear-gradient(to right, var(--hairline), transparent);
 }
 
-/* ---- No Results ---- */
+.resultsMetaSkeleton {
+  width: 180px;
+  height: 12px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 25%, rgba(255, 255, 255, 0.09) 50%, rgba(255, 255, 255, 0.04) 75%);
+  background-size: 200% 100%;
+  animation: metaShimmer 1.4s linear infinite;
+}
 
+@keyframes metaShimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* ---- Empty states ----------------------------------------------------------
+ * .emptyState/.emptyIcon/.emptyTitle/.emptyText/.emptyAction for pages here;
+ * .noResults/.noResultsIcon/.noResultsText keep DiscoverGrid's markup (emoji
+ * icon + bare text title + hint) looking the same.
+ * ------------------------------------------------------------------------- */
+
+.emptyState,
 .noResults {
-  text-align: center;
-  padding: 80px 20px;
-  color: var(--text-secondary);
-  font-size: 16px;
   grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 48vh;
+  padding: 56px 20px;
+  text-align: center;
+  /* DiscoverGrid's title is a bare text node, so it inherits this */
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--text-white);
+  animation: emptyIn var(--dur-slow) var(--ease-out) both;
 }
 
+.emptyIcon,
 .noResultsIcon {
-  font-size: 48px;
-  margin-bottom: 16px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 30%, rgba(var(--accent-rgb), 0.16), rgba(var(--accent-rgb), 0.04) 72%);
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--accent-rgb), 0.2),
+    0 14px 36px -14px rgba(var(--accent-rgb), 0.45);
+  color: var(--accent-color);
+  font-size: 30px; /* emoji icons */
+  line-height: 1;
+}
+
+.emptyIcon svg,
+.noResultsIcon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.emptyTitle {
+  max-width: 28ch;
+  margin: 0 0 8px;
+  overflow-wrap: break-word;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  color: var(--text-white);
+}
+
+.emptyText,
+.noResultsText {
   display: block;
+  max-width: 38ch;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: 0;
+  color: var(--text-secondary);
 }
 
 .noResultsText {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.3);
   margin-top: 8px;
 }
 
-/* ---- Responsive ---- */
+.emptyAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  margin-top: 24px;
+  padding: 0 24px;
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  border-radius: var(--radius-pill);
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--accent-color);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+/* Primary (sign-in gates): solid accent, same as the Settings gate. */
+.emptyActionPrimary {
+  border-color: var(--accent-color);
+  background: var(--accent-color);
+  color: var(--accent-ink);
+  box-shadow: 0 14px 34px -16px rgba(var(--accent-rgb), 0.8);
+}
+
+.emptyAction svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.emptyAction:active {
+  transform: scale(var(--press-scale));
+  transition-duration: var(--dur-instant);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .emptyAction:hover {
+    background: rgba(var(--accent-rgb), 0.15);
+    border-color: rgba(var(--accent-rgb), 0.6);
+  }
+
+  .emptyActionPrimary:hover {
+    border-color: var(--accent-color);
+    background: transparent;
+    color: var(--accent-color);
+  }
+}
+
+@keyframes emptyIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* ---- Responsive ------------------------------------------------------------ */
+
+@media (max-width: 1200px) {
+  .grid {
+    --grid-cols: 4;
+    --grid-gap: 24px;
+  }
+}
 
 @media (max-width: 1080px) {
   .discoverHeader {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 25px;
+    align-items: stretch;
+    gap: 28px;
   }
 
   .filterWrapper {
     width: 100%;
+    margin-bottom: 0;
+  }
+
+  .searchField {
+    flex: none;
+    width: min(560px, 100%);
   }
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 900px) {
   .grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
+    --grid-cols: 3;
+    --grid-gap: 20px;
   }
 }
 
 @media (max-width: 768px) {
   .page {
-    padding: 110px 18px 56px;
+    --page-x: var(--gutter);
+    padding-top: calc(var(--nav-h) + var(--safe-top) + 20px);
+    padding-bottom: 40px;
   }
-  
+
+  /* iOS large-title rhythm: title, one-line gap, description, controls. */
+  .discoverHeader {
+    gap: 18px;
+    margin-bottom: 20px;
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
   .title {
-    font-size: 36px;
+    margin-bottom: 8px;
+    font-size: 34px;
+    line-height: 1.08;
+    letter-spacing: -0.025em;
   }
 
   .description {
-    font-size: 14px;
-    line-height: 1.6;
+    max-width: 36em;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .searchField {
+    width: 100%;
+  }
+
+  .grid {
+    --grid-cols: 3;
+    --grid-gap: 14px 12px;
+    margin-top: 0;
   }
 
   .resultsMeta {
-    flex-wrap: wrap;
-    row-gap: 6px;
+    gap: 12px;
+    margin-bottom: 16px;
   }
 
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-    justify-items: center;
+  .emptyState,
+  .noResults {
+    min-height: 44vh;
+    padding: 40px 8px;
+    font-size: 17px;
   }
 
-  .grid > * {
-    max-width: 196px;
+  .emptyIcon,
+  .noResultsIcon {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 18px;
+    font-size: 26px;
+  }
+
+  .emptyIcon svg,
+  .noResultsIcon svg {
+    width: 27px;
+    height: 27px;
+  }
+
+  .emptyTitle {
+    font-size: 19px;
   }
 }
 
-@media (max-width: 520px) {
-  .discoverHeader {
-    margin-bottom: 32px;
-    gap: 18px;
-    padding-bottom: 24px;
-  }
-
-  .title {
-    font-size: 28px;
-    margin-bottom: 10px;
-  }
-
+@media (max-width: 599px) {
   .grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
-
-  .grid > * {
-    max-width: 172px;
-  }
-
-  .noResults {
-    padding: 48px 12px;
-    font-size: 14px;
+    --grid-cols: 2;
+    --grid-gap: 12px;
   }
 }

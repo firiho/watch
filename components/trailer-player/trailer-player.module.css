@@ -1,0 +1,330 @@
+/* Hero trailer — a still hands over to a cover-cropped, chrome-free YouTube embed
+   once playback is genuinely underway.
+
+   Hosts tune it through inherited custom properties (set them on the parent):
+     --trailer-fade-color      color the bottom edge fades into (match your surface)
+     --trailer-bottom-height   height of that fade
+     --trailer-top-color       top vignette (keeps grabbers / close buttons legible)
+     --trailer-side            extra layer behind overlaid titles (any background)
+     --trailer-controls-right / --trailer-controls-bottom  control cluster offsets */
+
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  container-type: size;
+  isolation: isolate;
+  background: var(--trailer-bg, #050506);
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ---- Video: cover-cropped and scaled past YouTube's edge chrome ---- */
+.video {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  transform: scale(1.05);
+  transition: transform 1600ms var(--ease-out);
+}
+
+.root[data-revealed] .video {
+  transform: none;
+}
+
+.frame {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  width: max(100cqw, 177.78cqh);
+  height: max(100cqh, 56.25cqw);
+  border: 0;
+  transform: translate(-50%, -50%) scale(1.12);
+  pointer-events: none;
+}
+
+/* ---- Still: covers the video until it plays cleanly ---- */
+.cover {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transition: opacity 480ms var(--ease-in-out);
+}
+
+.coverHidden {
+  opacity: 0;
+  transition-duration: 720ms;
+}
+
+.still {
+  object-fit: cover;
+  opacity: 0;
+  transform-origin: 62% 42%;
+  transition: opacity 560ms var(--ease-out);
+  animation: drift 26s var(--ease-out) both;
+}
+
+.stillLoaded {
+  opacity: 1;
+}
+
+.stillPoster {
+  filter: blur(28px) saturate(140%);
+  animation: none;
+  transform: scale(1.3);
+}
+
+.stillPoster.stillLoaded {
+  opacity: 0.7;
+}
+
+@keyframes drift {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.06);
+  }
+}
+
+/* ---- Shades ---- */
+.shadeSide,
+.shadeTop,
+.shadeBottom {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.shadeSide {
+  inset: 0;
+  background: var(--trailer-side, none);
+}
+
+.shadeTop {
+  inset: 0 0 auto;
+  height: var(--trailer-top-height, 34%);
+  background: linear-gradient(to bottom, var(--trailer-top-color, rgba(0, 0, 0, 0.45)), rgba(0, 0, 0, 0));
+}
+
+.shadeBottom {
+  inset: auto 0 0;
+  height: var(--trailer-bottom-height, 45%);
+  background: linear-gradient(to top, var(--trailer-fade-color, #0b0b0c), rgba(11, 11, 12, 0));
+  /* Eased stops: no visible band where the video meets the surface. */
+  background: linear-gradient(
+    to top,
+    var(--trailer-fade-color, #0b0b0c) 0%,
+    color-mix(in srgb, var(--trailer-fade-color, #0b0b0c) 86%, transparent) 16%,
+    color-mix(in srgb, var(--trailer-fade-color, #0b0b0c) 58%, transparent) 38%,
+    color-mix(in srgb, var(--trailer-fade-color, #0b0b0c) 28%, transparent) 62%,
+    color-mix(in srgb, var(--trailer-fade-color, #0b0b0c) 8%, transparent) 84%,
+    transparent 100%
+  );
+}
+
+/* ---- Progress ---- */
+.progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+
+.progressOn {
+  opacity: 1;
+}
+
+.progressBar {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  background: rgba(var(--accent-rgb), 0.85);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.45);
+}
+
+/* ---- Controls ---- */
+.controls {
+  position: absolute;
+  right: var(--trailer-controls-right, 16px);
+  bottom: var(--trailer-controls-bottom, 16px);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: controlsIn var(--dur-slow) var(--ease-out) 120ms backwards;
+}
+
+@keyframes controlsIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+}
+
+.ctrl,
+.pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(14, 14, 16, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  backdrop-filter: blur(16px) saturate(170%);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.ctrl {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.ctrlIcon {
+  display: inline-flex;
+  animation: iconPop var(--dur-base) var(--ease-spring);
+}
+
+.ctrl svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ctrlOn {
+  color: #dafff4;
+  background: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), 0.6);
+}
+
+.pill {
+  height: 44px;
+  gap: 10px;
+  padding: 0 18px 0 8px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+}
+
+.pillIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #0a0a0a;
+  background: #fff;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.pillIcon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.pillIcon:not(.pillIconReplay) svg {
+  margin-left: 2px; /* optical centering of the triangle */
+}
+
+.pillIconReplay svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.4;
+}
+
+.pillArrow {
+  width: 14px;
+  height: 14px;
+  margin-left: -2px;
+  opacity: 0.7;
+}
+
+.ctrl:active {
+  transform: scale(0.92);
+  transition-duration: var(--dur-instant);
+}
+
+.pill:active {
+  transform: scale(0.95);
+  transition-duration: var(--dur-instant);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ctrl:hover,
+  .pill:hover {
+    color: #0a0a0a;
+    background: rgba(255, 255, 255, 0.94);
+    border-color: rgba(255, 255, 255, 0.94);
+  }
+
+  .pill:hover .pillIcon {
+    color: #fff;
+    background: #0a0a0a;
+  }
+}
+
+@keyframes iconPop {
+  from {
+    transform: scale(0.6);
+    opacity: 0.3;
+  }
+}
+
+@media (max-width: 768px) {
+  .controls {
+    gap: 8px;
+  }
+
+  .ctrl {
+    width: 40px;
+    height: 40px;
+  }
+
+  .ctrl svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* 40px visual, 44px hit area. */
+  .ctrl::before,
+  .pill::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+  }
+
+  .pill {
+    height: 40px;
+    gap: 9px;
+    padding: 0 16px 0 6px;
+    font-size: 13.5px;
+  }
+}

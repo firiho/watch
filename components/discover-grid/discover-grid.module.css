@@ -1,18 +1,114 @@
+/* Infinite-scroll footer under the discover grid. It fetches early (see the
+   observer's rootMargin), so in practice the spinner is rarely seen. */
+
 .sentinel {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 64px;
-  padding: 28px 0 12px;
+  min-height: 96px;
+  padding: 32px 0 8px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+}
+
+.loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  animation: fadeIn var(--dur-base) var(--ease-out) both;
 }
 
 .spinner {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.15);
-  border-top-color: var(--accent-color, #64ffda);
-  animation: spin 0.8s linear infinite;
+  border: 2px solid rgba(var(--accent-rgb), 0.16);
+  border-top-color: var(--accent-color);
+  animation: spin 0.75s linear infinite;
+}
+
+.loadingText {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+/* "— You've reached the end —" with hairlines fading out on both sides */
+.endText {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: min(420px, 100%);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: var(--text-faint);
+  animation: fadeIn var(--dur-slow) var(--ease-out) both;
+}
+
+.endText::before,
+.endText::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+}
+
+.endText::before {
+  background: linear-gradient(to left, var(--hairline-strong), transparent);
+}
+
+.endText::after {
+  background: linear-gradient(to right, var(--hairline-strong), transparent);
+}
+
+.retryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.retryButton svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.retryButton:active {
+  transform: scale(var(--press-scale));
+  transition-duration: var(--dur-instant);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .retryButton:hover {
+    border-color: rgba(var(--accent-rgb), 0.45);
+    color: var(--accent-color);
+  }
 }
 
 @keyframes spin {
@@ -21,8 +117,15 @@
   }
 }
 
-.endText {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.4);
-  letter-spacing: 0.3px;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .sentinel {
+    min-height: 80px;
+    padding: 24px 0 4px;
+  }
 }

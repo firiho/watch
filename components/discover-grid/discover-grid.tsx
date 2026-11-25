@@ -12,6 +12,11 @@ interface DiscoverGridProps {
   type: 'movie' | 'tv';
 }
 
+/** Start fetching the next page well before the sentinel scrolls into view. */
+const PREFETCH_MARGIN = '0px 0px 1400px 0px';
+/** Posters in the first rows (above the fold on phones and desktop) load eagerly. */
+const EAGER_POSTERS = 6;
+
 const DiscoverGrid = ({ type }: DiscoverGridProps) => {
   const searchParams = useSearchParams();
   const genre = searchParams.get('genre') || '';
@@ -25,6 +30,7 @@ const DiscoverGrid = ({ type }: DiscoverGridProps) => {
   const [totalPages, setTotalPages] = useState(1);
   const [initialLoading, setInitialLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreFailed, setLoadMoreFailed] = useState(false);
   const [error, setError] = useState(false);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -49,6 +55,7 @@ const DiscoverGrid = ({ type }: DiscoverGridProps) => {
     loadingRef.current = true;
     setInitialLoading(true);
     setError(false);
+    setLoadMoreFailed(false);
     setItems([]);
     setPage(1);
 
@@ -80,6 +87,7 @@ const DiscoverGrid = ({ type }: DiscoverGridProps) => {
     const nextPage = page + 1;
     loadingRef.current = true;
     setLoadingMore(true);
+    setLoadMoreFailed(false);
 
     fetch(buildUrl(nextPage))
       .then((res) => {
@@ -97,7 +105,9 @@ const DiscoverGrid = ({ type }: DiscoverGridProps) => {
         setTotalPages(data.totalPages || totalPages);
       })
       .catch(() => {
-        /* keep what we have; the sentinel will retry on next intersection */
+        // Keep what we have. The sentinel retries on its next intersection, and the
+        // retry button covers the case where it never leaves the viewport.
+        if (requestKeyRef.current === filterKey) setLoadMoreFailed(true);
       })
       .finally(() => {
         if (requestKeyRef.current === filterKey) setLoadingMore(false);
@@ -113,7 +123,7 @@ const DiscoverGrid = ({ type }: DiscoverGridProps) => {
       (entries) => {
         if (entries[0].isIntersecting) loadMore();
       },
-      { rootMargin: '600px 0px' }
+      { rootMargin: PREFETCH_MARGIN }
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -121,7 +131,7 @@ const DiscoverGrid = ({ type }: DiscoverGridProps) => {
 
   if (initialLoading) {
     return (
-      <div className={gridStyles.grid}>
+      <div className={gridStyles.grid} aria-busy="true" aria-label="Loading titles">
         {Array.from({ length: 12 }).map((_, i) => (
           <MovieCardSkeleton key={i} />
         ))}
@@ -154,16 +164,30 @@ const DiscoverGrid = ({ type }: DiscoverGridProps) => {
   return (
     <>
       <div className={gridStyles.grid}>
-        {items.map((item) => (
-          <MovieCard key={`${item.mediaType}-${item.id}`} {...item} />
+        {items.map((item, index) => (
+          <MovieCard key={`${item.mediaType}-${item.id}`} {...item} eager={index < EAGER_POSTERS} />
         ))}
       </div>
 
       <div ref={sentinelRef} className={styles.sentinel}>
-        {loadingMore && <div className={styles.spinner} aria-label="Loading more" />}
-        {reachedEnd && !loadingMore && (
-          <span className={styles.endText}>You&apos;ve reached the end</span>
-        )}
+        <div className={styles.status} role="status" aria-live="polite">
+          {loadingMore ? (
+            <span className={styles.loading}>
+              <span className={styles.spinner} aria-hidden="true" />
+              <span className={styles.loadingText}>Loading more</span>
+            </span>
+          ) : loadMoreFailed && !reachedEnd ? (
+            <button type="button" className={styles.retryButton} onClick={loadMore}>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 11a8 8 0 1 0-2.34 5.66" />
+                <path d="M20 5v6h-6" />
+              </svg>
+              Couldn&apos;t load more. Retry
+            </button>
+          ) : reachedEnd ? (
+            <span className={styles.endText}>You&apos;ve reached the end</span>
+          ) : null}
+        </div>
       </div>
     </>
   );

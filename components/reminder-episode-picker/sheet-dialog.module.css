@@ -1,0 +1,208 @@
+/* Shared overlay chrome — centered dialog on desktop, iOS bottom sheet ≤768px.
+   Consumers size the panel through --sheet-max-w, --sheet-h and --sheet-h-mobile. */
+
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding:
+    calc(24px + var(--safe-top))
+    calc(24px + var(--safe-right))
+    calc(24px + var(--safe-bottom))
+    calc(24px + var(--safe-left));
+  overscroll-behavior: contain;
+}
+
+/* While leaving, taps fall through to whatever is underneath — like iOS. */
+.root[data-state='closing'] {
+  pointer-events: none;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 4, 6, 0.66);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  backdrop-filter: blur(12px) saturate(140%);
+  /* `backwards`: after the entrance, inline opacity (drag) can take over. */
+  animation: backdropIn var(--dur-slow) var(--ease-out) backwards;
+}
+
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--sheet-max-w, 520px);
+  height: var(--sheet-h, auto);
+  max-height: min(800px, calc(100dvh - 48px - var(--safe-top) - var(--safe-bottom)));
+  overflow: hidden;
+  color: var(--text-primary);
+  background:
+    radial-gradient(120% 60% at 50% -12%, rgba(var(--accent-rgb), 0.07), transparent 62%),
+    linear-gradient(180deg, rgba(25, 26, 30, 0.98) 0%, rgba(12, 12, 14, 0.99) 100%);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  outline: none;
+  animation: dialogIn 340ms var(--ease-out) backwards;
+}
+
+.root[data-state='closing'] .backdrop {
+  animation: backdropOut 220ms var(--ease-in) forwards;
+}
+
+.root[data-state='closing'] .panel {
+  animation: dialogOut 200ms var(--ease-in) forwards;
+}
+
+.grabber {
+  display: none;
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 4;
+  width: 36px;
+  height: 5px;
+  margin-left: -18px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.26);
+  pointer-events: none;
+}
+
+.close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--hairline);
+  color: rgba(255, 255, 255, 0.78);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+/* 44×44 hit area around the 32px glyph. */
+.close::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+}
+
+.close:active:not(:disabled) {
+  transform: scale(0.9);
+  transition-duration: var(--dur-instant);
+}
+
+.close:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .close:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.13);
+    color: #fff;
+  }
+}
+
+@keyframes backdropIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes backdropOut {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dialogIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.96);
+  }
+}
+
+@keyframes dialogOut {
+  to {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.97);
+  }
+}
+
+@keyframes sheetIn {
+  from {
+    transform: translate3d(0, 100%, 0);
+  }
+}
+
+/* No `from`: starts wherever the sheet is (including mid-drag). */
+@keyframes sheetOut {
+  to {
+    transform: translate3d(0, 100%, 0);
+  }
+}
+
+@media (max-width: 768px) {
+  .root {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  /* Dim only: a full-screen blur under a moving sheet costs frames on phones. */
+  .backdrop {
+    background: rgba(0, 0, 0, 0.52);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .panel {
+    max-width: none;
+    height: var(--sheet-h-mobile, auto);
+    max-height: calc(100dvh - var(--safe-top) - 10px);
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
+    border-width: 1px 0 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    animation: sheetIn var(--dur-sheet) var(--ease-ios) backwards;
+  }
+
+  .root[data-state='closing'] .backdrop {
+    animation: backdropOut 320ms var(--ease-out) forwards;
+  }
+
+  .root[data-state='closing'] .panel {
+    animation: sheetOut 360ms var(--ease-ios) forwards;
+  }
+
+  .grabber {
+    display: block;
+  }
+
+  .close {
+    top: 14px;
+    right: calc(14px + var(--safe-right));
+    width: 30px;
+    height: 30px;
+  }
+
+  .close::before {
+    inset: -7px;
+  }
+}

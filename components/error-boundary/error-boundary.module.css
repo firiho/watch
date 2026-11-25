@@ -1,45 +1,435 @@
+/* =============================================================================
+ * Status screens: the error-boundary card and the 404 page (app/not-found.tsx).
+ *
+ * Both live in this module on purpose: the root layout renders <ErrorBoundary>
+ * on every route, so this stylesheet is always loaded. Next.js preloads the
+ * root not-found's CSS on every page, so giving the 404 its own module would
+ * cost every page an extra (unused) stylesheet request.
+ * ========================================================================== */
+
+/* ---- Error boundary ---------------------------------------------------------- */
+
 .wrap {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 60vh;
-  padding: 40px 20px;
+  min-height: 70vh;
+  min-height: 70dvh;
+  padding:
+    calc(var(--nav-h) + var(--safe-top) + 32px)
+    calc(var(--gutter) + var(--safe-right))
+    48px
+    calc(var(--gutter) + var(--safe-left));
 }
 
 .card {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
   max-width: 420px;
-  padding: 32px 28px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
+  padding: 36px 30px 30px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(var(--accent-rgb), 0.08), transparent 60%),
+    var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+  animation: cardIn var(--dur-slow) var(--ease-out) both;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 30%, rgba(var(--accent-rgb), 0.16), rgba(var(--accent-rgb), 0.04) 72%);
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--accent-rgb), 0.22),
+    0 14px 36px -14px rgba(var(--accent-rgb), 0.5);
+  color: var(--accent-color);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(var(--accent-rgb), 0.85);
 }
 
 .title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #fff;
   margin: 0 0 10px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--text-white);
 }
 
 .text {
-  color: rgba(255, 255, 255, 0.62);
+  max-width: 34ch;
+  margin: 0 0 24px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.button,
+.secondary {
+  display: inline-flex;
+  flex: 1 1 140px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 20px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
   font-size: 14px;
-  line-height: 1.5;
-  margin: 0 0 20px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
 }
 
 .button {
-  padding: 10px 18px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  background: rgba(100, 255, 218, 0.18);
-  border: 1px solid rgba(100, 255, 218, 0.55);
-  color: #d8fff5;
+  border: 1px solid var(--accent-color);
+  background: var(--accent-color);
+  color: var(--accent-ink);
 }
 
-.button:hover {
-  background: rgba(100, 255, 218, 0.28);
+.secondary {
+  border: 1px solid var(--hairline-strong);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-white);
+}
+
+.button:active,
+.secondary:active {
+  transform: scale(var(--press-scale));
+  transition-duration: var(--dur-instant);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button:hover {
+    background: transparent;
+    color: var(--accent-color);
+  }
+
+  .secondary:hover {
+    border-color: rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.09);
+  }
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+
+@media (max-width: 768px) {
+  .wrap {
+    min-height: calc(100dvh - var(--tabbar-offset));
+    padding-top: calc(var(--nav-h) + var(--safe-top) + 24px);
+  }
+
+  .card {
+    padding: 30px 22px 22px;
+    border-radius: 26px;
+  }
+}
+
+/* ---- 404 — the projector still from /auth, a soft beam, a flickering "404" ---- */
+
+.nfPage {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding:
+    calc(var(--nav-h) + var(--safe-top) + 32px)
+    calc(var(--gutter) + var(--safe-right))
+    64px
+    calc(var(--gutter) + var(--safe-left));
+  overflow: hidden;
+  text-align: center;
+}
+
+.nfBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(90% 70% at 50% 45%, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.88) 75%),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.35) 40%, #000 100%),
+    url('https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=1600&q=80') center / cover no-repeat;
+  animation: nfFadeIn 1s var(--ease-out) both;
+}
+
+/* A faint projector beam sweeping across the number. */
+.nfBeam {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  left: 50%;
+  width: min(900px, 160vw);
+  height: min(520px, 90vw);
+  background: radial-gradient(closest-side, rgba(var(--accent-rgb), 0.14), rgba(var(--accent-rgb), 0.04) 55%, transparent 75%);
+  transform: translate(-50%, -62%);
+  filter: blur(8px);
+  pointer-events: none;
+  animation: nfBeamSweep 7s var(--ease-in-out) infinite alternate;
+}
+
+.nfContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 560px;
+  animation: nfRise 700ms var(--ease-out) 80ms both;
+}
+
+.nfEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 7px 14px;
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+  border-radius: var(--radius-pill);
+  background: rgba(var(--accent-rgb), 0.06);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--accent-color);
+}
+
+.nfEyebrowDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.9);
+  animation: nfBlink 1.6s steps(1) infinite;
+}
+
+.nfCode {
+  display: flex;
+  justify-content: center;
+  gap: 0.02em;
+  margin: 0 0 8px;
+  font-size: clamp(110px, 22vw, 184px);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: transparent;
+  background: linear-gradient(180deg, #b6ffee 0%, var(--accent-color) 45%, rgba(var(--accent-rgb), 0.35) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 18px 48px rgba(var(--accent-rgb), 0.28));
+  animation: nfFlicker 6s linear infinite;
+}
+
+.nfCodeMiddle {
+  display: inline-block;
+  animation: nfDrift 5s var(--ease-in-out) infinite alternate;
+}
+
+.nfTitle {
+  margin: 0 0 12px;
+  font-size: clamp(26px, 4vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-white);
+}
+
+.nfText {
+  max-width: 44ch;
+  margin: 0 0 32px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.nfActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.nfPrimary,
+.nfSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 24px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.nfPrimary {
+  border: 1px solid var(--accent-color);
+  background: var(--accent-color);
+  color: var(--accent-ink);
+  box-shadow: 0 14px 34px -14px rgba(var(--accent-rgb), 0.8);
+}
+
+.nfSecondary {
+  border: 1px solid var(--hairline-strong);
+  background: rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  color: var(--text-white);
+}
+
+.nfPrimary:active,
+.nfSecondary:active {
+  transform: scale(var(--press-scale));
+  transition-duration: var(--dur-instant);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nfPrimary:hover {
+    background: transparent;
+    color: var(--accent-color);
+  }
+
+  .nfPrimary:hover svg {
+    transform: translateX(3px);
+  }
+
+  .nfPrimary svg {
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+
+  .nfSecondary:hover {
+    border-color: rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+@keyframes nfFadeIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes nfRise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+/* Old-projector flicker: mostly steady, a couple of quick dips. */
+@keyframes nfFlicker {
+  0%, 18%, 22%, 61%, 64%, 100% {
+    opacity: 1;
+  }
+  20% {
+    opacity: 0.72;
+  }
+  62.5% {
+    opacity: 0.84;
+  }
+}
+
+@keyframes nfDrift {
+  from {
+    transform: translateY(-2%) rotate(-2deg);
+  }
+  to {
+    transform: translateY(3%) rotate(3deg);
+  }
+}
+
+@keyframes nfBeamSweep {
+  from {
+    transform: translate(-54%, -62%) rotate(-4deg);
+    opacity: 0.8;
+  }
+  to {
+    transform: translate(-46%, -60%) rotate(4deg);
+    opacity: 1;
+  }
+}
+
+@keyframes nfBlink {
+  0%, 60% {
+    opacity: 1;
+  }
+  61%, 100% {
+    opacity: 0.25;
+  }
+}
+
+@media (max-width: 768px) {
+  .nfPage {
+    /* Fill the screen between the top bar and the tab bar. */
+    min-height: calc(100dvh - var(--tabbar-offset));
+    padding-top: calc(var(--nav-h) + var(--safe-top) + 24px);
+    padding-bottom: 40px;
+  }
+
+  .nfEyebrow {
+    margin-bottom: 14px;
+    font-size: 11px;
+  }
+
+  .nfText {
+    font-size: 15px;
+    margin-bottom: 28px;
+  }
+
+  .nfActions {
+    flex-direction: column;
+    align-self: stretch;
+    gap: 10px;
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+
+  .nfPrimary,
+  .nfSecondary {
+    width: 100%;
+    min-height: 50px;
+  }
 }

@@ -10,12 +10,22 @@
 .md { --star-size: 22px; }
 
 .star {
+  position: relative;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--star-empty, rgba(255, 255, 255, 0.22));
-  transition: color 0.15s ease, transform 0.15s ease;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.glyph {
+  position: relative;
+  display: inline-flex;
+  transition: transform var(--dur-fast) var(--ease-out);
 }
 
 .star svg {
+  display: block;
   width: var(--star-size);
   height: var(--star-size);
   fill: currentColor;
@@ -35,15 +45,115 @@
   background: none;
   border: none;
   padding: 2px;
+  border-radius: 6px;
   cursor: pointer;
 }
 
-.button:hover {
-  transform: scale(1.15);
+.button:active .glyph {
+  transform: scale(0.84);
+  transition-duration: var(--dur-instant);
 }
 
-.button:focus-visible {
-  outline: 2px solid var(--accent-color);
-  outline-offset: 1px;
-  border-radius: 3px;
+@media (hover: hover) and (pointer: fine) {
+  .button:hover .glyph {
+    transform: scale(1.18);
+  }
+}
+
+/* Specific enough to beat the global `[tabindex='-1']:focus` reset during roving focus. */
+.stars .button:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 0;
+}
+
+/* Spring pop on the star you just chose, with a soft ring burst. */
+.pop {
+  animation: starPop 480ms var(--ease-out);
+}
+
+.pop::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--star-size) * 1.9);
+  height: calc(var(--star-size) * 1.9);
+  margin: calc(var(--star-size) * -0.95) 0 0 calc(var(--star-size) * -0.95);
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  opacity: 0;
+  pointer-events: none;
+  animation: starRing 560ms var(--ease-out);
+}
+
+/* Clearing gets a small "deflate" instead. */
+.unpop {
+  animation: starUnpop 320ms var(--ease-out);
+}
+
+@keyframes starPop {
+  0% {
+    transform: scale(1);
+  }
+  28% {
+    transform: scale(1.42);
+  }
+  56% {
+    transform: scale(0.9);
+  }
+  78% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes starRing {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.35);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes starUnpop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(0.7);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Touch: ≥32px (md: 40px) hit areas around a barely-larger glyph. Negative
+   margins keep the row's footprint (and alignment with neighbors) where it was. */
+@media (pointer: coarse) {
+  .interactive {
+    --hit: 32px;
+    gap: 0;
+    margin: calc((var(--star-size) - var(--hit)) / 2);
+  }
+
+  .interactive.sm {
+    --star-size: 17px;
+  }
+
+  .interactive.md {
+    --star-size: 24px;
+    --hit: 40px;
+  }
+
+  .interactive .button {
+    width: var(--hit);
+    height: var(--hit);
+    padding: 0;
+    border-radius: 10px;
+  }
 }

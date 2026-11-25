@@ -1,183 +1,669 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import Image from 'next/image';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import type { AnimationEvent as ReactAnimationEvent, MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { useModal } from '@/context/modal-context';
+import { useModal, type ActiveItem } from '@/context/modal-context';
 import { useWatchlist } from '@/context/watchlist-context';
 import { useAuth } from '@/context/auth-context';
 import { useReminders } from '@/context/reminder-context';
 import { useRecommendations } from '@/context/recommendations-context';
 import { useToggleReminder } from '@/hooks/use-toggle-reminder';
+import { useBodyScrollLock } from '@/hooks/use-body-scroll-lock';
 import StarRating from '@/components/star-rating/star-rating';
+import TrailerPlayer from '@/components/trailer-player/trailer-player';
+import { IconArrowUpRight, IconClose } from '@/components/trailer-player/icons';
 import { ADMIN_NAME } from '@/lib/admin';
-import { ContentItem, getTVSeasonDetails, Episode } from '@/lib/tmdb';
+import { haptic } from '@/lib/haptics';
+import { formatDisplayDate, formatRuntime } from '@/lib/format';
+import { ContentItem, Episode } from '@/lib/tmdb';
 import { selectBestYoutubeTrailer, TMDBVideo } from '@/lib/tmdb-video-util';
 import { getCheckpoint, setCheckpoint, Checkpoint } from '@/lib/checkpoints';
 import styles from './movie-modal.module.css';
 
-const MovieModal = () => {
+const MOBILE_QUERY = '(max-width: 768px)';
+const HERO_SIZES = '(max-width: 768px) 100vw, (max-width: 1222px) 90vw, 1100px';
+/** Drag-to-dismiss: distance (fraction of the sheet) or flick speed (px/ms). */
+const DISMISS_FRACTION = 0.25;
+const DISMISS_VELOCITY = 0.5;
+const DRAG_SLOP = 6;
+const ENTER_FALLBACK_MS = 800;
+const EXIT_FALLBACK_MS = 650;
+const MAX_PROVIDER_LOGOS = 3;
+
+/* ---------------------------------------------------------------------------
+ * Helpers
+ * ------------------------------------------------------------------------- */
+
+/** TMDB URLs built from a null path end in "/null" — treat those as missing. */
+const usableImage = (url?: string | null) => (url && !/\/(null|undefined)$/.test(url) ? url : null);
+
+/** Swap a TMDB size segment ("/t/p/original/…") for a UI-appropriate one. */
+const tmdbSized = (url: string | null, size: string) => (url ? url.replace(/\/t\/p\/[^/]+\//, `/t/p/${size}/`) : null);
+
+const formatCurrency = (amount?: number) =>
+  amount == null
+    ? 'N/A'
+    : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount);
+
+const joinList = (items?: string[]) => (items && items.length > 0 ? items.join(', ') : null);
+
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+
+const isModifiedClick = (event: ReactMouseEvent) =>
+  event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0;
+
+/** iOS-style resistance: the further you pull, the less it moves. */
+const rubberBand = (distance: number, dimension = 140) => dimension * (1 - 1 / ((distance * 0.55) / dimension + 1));
+
+/** Pin an element's in-flight animated values inline so the next animation continues from them. */
+function freezeMotion(el: HTMLElement, props: Array<'transform' | 'opacity'>) {
+  const computed = getComputedStyle(el);
+  const values = props.map((prop) => computed[prop]);
+  el.style.transition = 'none';
+  props.forEach((prop, index) => {
+    el.style[prop] = values[index];
+  });
+}
+
+function clearMotion(...elements: Array<HTMLElement | null>) {
+  for (const el of elements) {
+    if (!el) continue;
+    for (const prop of ['transform', 'opacity', 'transition', '--exit-dur', '--exit-ease']) {
+      el.style.removeProperty(prop);
+    }
+  }
+}
+
+/** True when another (visible) modal sits above ours — let it own the keyboard. */
+function isCoveredByAnotherDialog(sheet: HTMLElement) {
+  const modals = Array.from(document.querySelectorAll<HTMLElement>('[aria-modal="true"]')).filter(
+    (el) => el.getClientRects().length > 0
+  );
+  const top = modals[modals.length - 1];
+  if (top && top !== sheet && !sheet.contains(top)) return true;
+  const active = document.activeElement;
+  return !!active && active !== document.body && !sheet.contains(active) && !!active.closest('[role="dialog"]');
+}
+
+/* ---------------------------------------------------------------------------
+ * Icons
+ * ------------------------------------------------------------------------- */
+
+const StarGlyph = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+  </svg>
+);
+
+const PlusIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M5 12.5 10 17.5 19 7.5" />
+  </svg>
+);
+
+const BellIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.filledIcon}>
+    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2Zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2Z" />
+  </svg>
+);
+
+const BookmarkIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M18 20.5 12 16.2 6 20.5V5.5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v15Z" />
+  </svg>
+);
+
+const ChevronDown = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="m6 9 6 6 6-6" />
+  </svg>
+);
+
+const Spinner = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.spinner}>
+    <circle cx="12" cy="12" r="9" />
+  </svg>
+);
+
+/* ---------------------------------------------------------------------------
+ * Placeholders
+ * ------------------------------------------------------------------------- */
+
+/** Mirrors the real layout (hero, title block, body) so nothing jumps when data lands. */
+const DetailSkeleton = () => (
+  <div className={styles.skeleton} aria-hidden="true">
+    <div className={styles.head}>
+      <div className={`${styles.hero} ${styles.skeletonHero}`} />
+      <div className={styles.titleBlock}>
+        <span className={`${styles.skel} ${styles.skelTagline}`} />
+        <span className={`${styles.skel} ${styles.skelTitle}`} />
+        <span className={`${styles.skel} ${styles.skelMeta}`} />
+        <div className={styles.skelActions}>
+          <span className={`${styles.skel} ${styles.skelButton}`} />
+          <span className={`${styles.skel} ${styles.skelRound}`} />
+        </div>
+      </div>
+    </div>
+    <div className={styles.body}>
+      <div className={styles.skelLines}>
+        <span className={styles.skel} style={{ width: '94%' }} />
+        <span className={styles.skel} style={{ width: '88%' }} />
+        <span className={styles.skel} style={{ width: '91%' }} />
+        <span className={styles.skel} style={{ width: '56%' }} />
+      </div>
+    </div>
+  </div>
+);
+
+const EpisodeSkeletons = () => (
+  <>
+    {[0, 1, 2].map((n) => (
+      <div key={n} className={`${styles.episode} ${styles.episodeSkeleton}`} aria-hidden="true">
+        <span className={styles.epNumber} />
+        <span className={`${styles.epStill} ${styles.skel}`} />
+        <div className={styles.epInfo}>
+          <span className={styles.skel} style={{ width: '48%', height: 14 }} />
+          <span className={styles.skel} style={{ width: '32%', height: 10 }} />
+          <span className={styles.skel} style={{ width: '86%', height: 10 }} />
+        </div>
+      </div>
+    ))}
+  </>
+);
+
+/* ---------------------------------------------------------------------------
+ * Modal
+ * ------------------------------------------------------------------------- */
+
+type Fact = { key: string; label: string; value: ReactNode; wide?: boolean; desktopOnly?: boolean };
+
+export default function MovieModal() {
   const { activeItem, closeModal, openModal } = useModal();
   const { isInList, addItem, removeItem, getRating, setRating } = useWatchlist();
   const { getRecommendation } = useRecommendations();
   const { hasReminder } = useReminders();
   const { toggleReminder, pending: addingRem } = useToggleReminder();
   const { user, isAdmin } = useAuth();
+
+  // Presentation: the last item stays rendered while the sheet animates out.
+  const [rendered, setRendered] = useState<ActiveItem | null>(null);
+  const [closing, setClosing] = useState(false);
+  const [entered, setEntered] = useState(false);
+
   const [data, setData] = useState<ContentItem | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
   const [adding, setAdding] = useState(false);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [activeSeason, setActiveSeason] = useState(1);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
   const [checkpoint, setCheckpointData] = useState<Checkpoint | null>(null);
   const [settingCheckpoint, setSettingCheckpoint] = useState<string | null>(null);
-
-  // Trailer state
   const [trailer, setTrailer] = useState<TMDBVideo | null>(null);
-  const [trailerLoading, setTrailerLoading] = useState(false);
-  const [trailerReady, setTrailerReady] = useState(false);
-  const [trailerMuted, setTrailerMuted] = useState(true);
-  const [trailerPlay, setTrailerPlay] = useState(false);
-  const [trailerError, setTrailerError] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const playerRef = useRef<HTMLIFrameElement | null>(null);
-  const modalRef = useRef<HTMLDivElement | null>(null);
+  const [barVisible, setBarVisible] = useState(false);
+  const [overviewExpanded, setOverviewExpanded] = useState(false);
+  const [overviewClamped, setOverviewClamped] = useState(false);
 
-  useEffect(() => {
+  const scrimRef = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const overviewRef = useRef<HTMLParagraphElement>(null);
+  const renderedRef = useRef<ActiveItem | null>(null);
+  const skipExitRef = useRef(false);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  // Bumped per load so late responses for a previous title are dropped.
+  const loadTokenRef = useRef(0);
+  const seasonTokenRef = useRef(0);
+  const trailerTokenRef = useRef(0);
+
+  const uid = useId();
+  const titleId = `${uid}-title`;
+  const isOpen = rendered !== null;
+
+  useBodyScrollLock(isOpen);
+
+  const finishExit = useCallback(() => {
+    renderedRef.current = null;
+    loadTokenRef.current += 1;
+    seasonTokenRef.current += 1;
+    trailerTokenRef.current += 1;
+    setRendered(null);
+    setClosing(false);
+    setEntered(false);
+    setData(null);
+    setLoadError(false);
+    setEpisodes([]);
+    setLoadingEpisodes(false);
+    setTrailer(null);
+    setCheckpointData(null);
+    setBarVisible(false);
+    setOverviewExpanded(false);
+  }, []);
+
+  // Open / switch / close transitions (before paint, so nothing flashes).
+  useLayoutEffect(() => {
+    const previous = renderedRef.current;
+    const sheet = sheetRef.current;
+    const scrim = scrimRef.current;
+
     if (activeItem) {
-      fetchDetails();
-      // A movie's trailer doesn't depend on its details, so fetch it in parallel.
-      // (TV trailers need the resolved season, so they're fetched after details.)
-      if (activeItem.type === 'movie') {
-        fetchTrailer();
+      if (!previous) {
+        returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        setEntered(false);
+      } else {
+        // Re-opened mid-exit or switched via "More Like This".
+        clearMotion(sheet, scrim);
+        if (previous.id !== activeItem.id || previous.type !== activeItem.type) {
+          sheet?.scrollTo({ top: 0 });
+        }
       }
-      if (activeItem.type === 'tv' && user) {
-        fetchUserCheckpoint();
-      }
-    } else {
-      setData(null);
-      setEpisodes([]);
-      setTrailer(null);
-      setTrailerPlay(false);
-      setTrailerReady(false);
-      setTrailerError(false);
-      setCheckpointData(null);
+      renderedRef.current = activeItem;
+      setRendered(activeItem);
+      setClosing(false);
+      return;
     }
-  }, [activeItem, user]);
 
-  // Focus management: close on Escape and trap Tab focus inside the dialog.
+    if (!previous) return;
+    const trigger = returnFocusRef.current;
+    returnFocusRef.current = null;
+    if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+
+    if (skipExitRef.current) {
+      // Navigating away (cast / director links): no exit animation.
+      skipExitRef.current = false;
+      finishExit();
+      return;
+    }
+    // Continue from wherever the sheet is (mid-drag, mid-spring, mid-enter).
+    if (sheet) freezeMotion(sheet, ['transform', 'opacity']);
+    if (scrim) freezeMotion(scrim, ['opacity']);
+    setClosing(true);
+  }, [activeItem, finishExit]);
+
   useEffect(() => {
-    if (!activeItem) return;
+    if (!closing) return;
+    const timer = window.setTimeout(finishExit, EXIT_FALLBACK_MS);
+    return () => window.clearTimeout(timer);
+  }, [closing, finishExit]);
 
-    const modalEl = modalRef.current;
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    modalEl?.focus();
+  useEffect(() => {
+    if (!isOpen || entered) return;
+    const timer = window.setTimeout(() => setEntered(true), ENTER_FALLBACK_MS);
+    return () => window.clearTimeout(timer);
+  }, [isOpen, entered]);
 
-    const handleKeyDown = (event: KeyboardEvent) => {
+  const handleSheetAnimationEnd = (event: ReactAnimationEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
+    if (closing) finishExit();
+    else setEntered(true);
+  };
+
+  /* ---- Data ---- */
+
+  const fetchTrailer = useCallback(async (id: number, type: 'movie' | 'tv', season?: number) => {
+    const token = ++trailerTokenRef.current;
+    setTrailer(null);
+    try {
+      const params = new URLSearchParams({ id: String(id), type });
+      if (type === 'tv') params.set('season', String(season ?? 1));
+      const res = await fetch(`/api/trailer?${params.toString()}`);
+      if (!res.ok) throw new Error('Failed to fetch trailer');
+      const json = await res.json();
+      if (token !== trailerTokenRef.current) return;
+      setTrailer(selectBestYoutubeTrailer(json.results || []) || null);
+    } catch (error) {
+      if (token === trailerTokenRef.current) console.error('[MovieModal] fetchTrailer error:', error);
+    }
+  }, []);
+
+  const fetchEpisodes = useCallback(async (id: number, season: number) => {
+    const token = ++seasonTokenRef.current;
+    setLoadingEpisodes(true);
+    try {
+      const res = await fetch(`/api/details?id=${id}&type=season&season=${season}`);
+      if (!res.ok) throw new Error('Failed to fetch episodes');
+      const json = await res.json();
+      if (token !== seasonTokenRef.current) return;
+      setEpisodes(Array.isArray(json) ? json : []);
+    } catch (error) {
+      if (token === seasonTokenRef.current) console.error('Error fetching episodes:', error);
+    } finally {
+      if (token === seasonTokenRef.current) setLoadingEpisodes(false);
+    }
+  }, []);
+
+  const activeId = activeItem?.id ?? null;
+  const activeType = activeItem?.type ?? null;
+
+  useEffect(() => {
+    if (activeId === null || activeType === null) return;
+    const token = ++loadTokenRef.current;
+    const controller = new AbortController();
+    setData(null);
+    setLoadError(false);
+    setEpisodes([]);
+    setOverviewExpanded(false);
+    setBarVisible(false);
+
+    // A movie's trailer doesn't depend on its details, so fetch it in parallel.
+    // (TV trailers need the resolved season, so they're fetched after details.)
+    if (activeType === 'movie') fetchTrailer(activeId, 'movie');
+    else setTrailer(null);
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/details?id=${activeId}&type=${activeType}`, { signal: controller.signal });
+        if (!res.ok) throw new Error('Failed to fetch details');
+        const json: ContentItem = await res.json();
+        if (token !== loadTokenRef.current) return;
+        setData(json);
+        if (activeType === 'tv') {
+          // Skip "Specials" (season 0) when a numbered season exists.
+          const firstSeason =
+            json.seasons?.find((s) => s.season_number > 0)?.season_number ?? json.seasons?.[0]?.season_number ?? 1;
+          setActiveSeason(firstSeason);
+          fetchEpisodes(json.id, firstSeason);
+          fetchTrailer(activeId, 'tv', firstSeason);
+        }
+      } catch (error) {
+        if (controller.signal.aborted || token !== loadTokenRef.current) return;
+        console.error('Error fetching details:', error);
+        setLoadError(true);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [activeId, activeType, reloadToken, fetchEpisodes, fetchTrailer]);
+
+  useEffect(() => {
+    if (activeId === null) return;
+    setCheckpointData(null);
+    if (activeType !== 'tv' || !user) return;
+    let cancelled = false;
+    getCheckpoint(user.uid, activeId)
+      .then((cp) => {
+        if (!cancelled) setCheckpointData(cp);
+      })
+      .catch((error) => console.error('Error fetching checkpoint', error));
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId, activeType, user]);
+
+  /* ---- Focus & keyboard ---- */
+
+  useEffect(() => {
+    if (isOpen) sheetRef.current?.focus({ preventScroll: true });
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || closing) return;
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || isCoveredByAnotherDialog(sheet)) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         closeModal();
         return;
       }
-      if (event.key !== 'Tab' || !modalEl) return;
-
-      const focusable = modalEl.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), iframe, [tabindex]:not([tabindex="-1"])'
-      );
+      if (event.key !== 'Tab') return;
+      const focusable = Array.from(
+        sheet.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => el.getClientRects().length > 0);
       if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      const active = document.activeElement as HTMLElement | null;
-
-      if (event.shiftKey && (active === first || active === modalEl)) {
+      const current = document.activeElement as HTMLElement | null;
+      const inside = !!current && sheet.contains(current);
+      if (event.shiftKey && (!inside || current === first || current === sheet)) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && active === last) {
+      } else if (!event.shiftKey && (!inside || current === last)) {
         event.preventDefault();
         first.focus();
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      previouslyFocused?.focus?.();
-    };
-  }, [activeItem, closeModal]);
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, closing, closeModal]);
 
-  // Mobile bottom sheet: drag down (when scrolled to the top) to dismiss.
+  /* ---- Mobile sheet: drag to dismiss ---- */
+
   useEffect(() => {
-    const el = modalRef.current;
-    if (!activeItem || !el) return;
+    const sheet = sheetRef.current;
+    const scrim = scrimRef.current;
+    if (!isOpen || closing || !entered || !sheet || !scrim) return;
+    const scroller = sheet; // the dialog is its own scroll container
 
-    const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
+    const mobile = window.matchMedia(MOBILE_QUERY);
+    let phase: 'idle' | 'pending' | 'dragging' | 'ignored' = 'idle';
+    let startX = 0;
     let startY = 0;
-    let startScroll = 0;
-    let dragging = false;
-    let dy = 0;
+    let baseOffset = 0;
+    let offset = 0;
+    let height = 1;
+    let fromHandle = false;
+    let inRow = false;
+    let samples: Array<{ t: number; y: number }> = [];
+    let frame = 0;
+    let settleTimer: number | undefined;
+    let suppressClicksUntil = 0;
 
-    const onStart = (e: TouchEvent) => {
-      if (!isMobile() || e.touches.length !== 1) return;
-      startY = e.touches[0].clientY;
-      startScroll = el.scrollTop;
-      dragging = false;
-      dy = 0;
+    const paint = () => {
+      frame = 0;
+      sheet.style.transform = offset === 0 ? '' : `translate3d(0, ${offset}px, 0)`;
+      scrim.style.opacity = String(1 - Math.min(1, Math.max(0, offset / height)) * 0.9);
     };
-    const onMove = (e: TouchEvent) => {
-      if (!isMobile() || e.touches.length !== 1) return;
-      const delta = e.touches[0].clientY - startY;
-      if (!dragging) {
-        // Only start a drag-to-close when at the very top and pulling downward.
-        if (startScroll <= 0 && delta > 6) {
-          dragging = true;
-          el.style.transition = 'none';
-        } else {
+    const schedulePaint = () => {
+      if (!frame) frame = requestAnimationFrame(paint);
+    };
+    const flushPaint = () => {
+      if (frame) cancelAnimationFrame(frame);
+      paint();
+    };
+
+    const translateNow = () => {
+      try {
+        return new DOMMatrixReadOnly(getComputedStyle(sheet).transform).m42;
+      } catch {
+        return 0;
+      }
+    };
+
+    const beginDrag = (y: number) => {
+      phase = 'dragging';
+      startY = y;
+      window.clearTimeout(settleTimer);
+      sheet.style.transition = 'none';
+      scrim.style.transition = 'none';
+    };
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (!mobile.matches || event.touches.length !== 1) {
+        phase = 'idle';
+        return;
+      }
+      const touch = event.touches[0];
+      const target = event.target instanceof Element ? event.target : null;
+      fromHandle = !!target?.closest('[data-sheet-handle]');
+      inRow = !!target?.closest('[data-hscroll]');
+      startX = touch.clientX;
+      startY = touch.clientY;
+      height = sheet.getBoundingClientRect().height || window.innerHeight;
+      samples = [{ t: event.timeStamp, y: touch.clientY }];
+      // Caught mid spring-back: grab the sheet where it is.
+      baseOffset = sheet.style.transition ? translateNow() : 0;
+      if (Math.abs(baseOffset) > 0.5) {
+        offset = baseOffset;
+        beginDrag(touch.clientY);
+        flushPaint();
+      } else {
+        baseOffset = 0;
+        phase = 'pending';
+      }
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (phase === 'idle' || phase === 'ignored') return;
+      if (event.touches.length !== 1) {
+        if (phase === 'dragging') settle(0);
+        phase = 'ignored';
+        return;
+      }
+      const touch = event.touches[0];
+      if (phase === 'pending') {
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
+        const canPull = fromHandle || scroller.scrollTop <= 0;
+        // Keep a downward pull ours while deciding (it has nothing to scroll anyway).
+        if (canPull && dy > 0 && !inRow && event.cancelable) event.preventDefault();
+        if (Math.abs(dx) < DRAG_SLOP && Math.abs(dy) < DRAG_SLOP) return;
+        if (Math.abs(dx) > Math.abs(dy) || !event.cancelable || (dy > 0 ? !canPull : !fromHandle)) {
+          phase = 'ignored'; // horizontal row swipe, or a normal scroll
           return;
         }
+        beginDrag(touch.clientY);
       }
-      dy = Math.max(0, delta);
-      if (e.cancelable) e.preventDefault();
-      el.style.transform = `translateY(${dy}px)`;
-    };
-    const onEnd = () => {
-      if (!dragging) return;
-      dragging = false;
-      if (dy > 110) {
-        el.style.transition = 'transform 0.2s ease';
-        el.style.transform = 'translateY(100%)';
-        window.setTimeout(() => closeModal(), 170);
-      } else {
-        el.style.transition = 'transform 0.25s ease';
-        el.style.transform = '';
-      }
-      dy = 0;
+      if (event.cancelable) event.preventDefault();
+      const raw = baseOffset + (touch.clientY - startY);
+      offset = raw >= 0 ? raw : -rubberBand(-raw);
+      samples.push({ t: event.timeStamp, y: touch.clientY });
+      while (samples.length > 2 && event.timeStamp - samples[0].t > 100) samples.shift();
+      schedulePaint();
     };
 
-    el.addEventListener('touchstart', onStart, { passive: true });
-    el.addEventListener('touchmove', onMove, { passive: false });
-    el.addEventListener('touchend', onEnd, { passive: true });
-    el.addEventListener('touchcancel', onEnd, { passive: true });
+    const settle = (velocity: number) => {
+      flushPaint();
+      if (offset > 0 && (offset > height * DISMISS_FRACTION || velocity > DISMISS_VELOCITY)) {
+        haptic('light');
+        // Carry the flick: duration from the remaining distance at (at least) release speed.
+        const remaining = Math.max(0, height - offset);
+        const duration = Math.round(Math.min(380, Math.max(180, remaining / Math.max(velocity, 1.3))));
+        sheet.style.setProperty('--exit-dur', `${duration}ms`);
+        sheet.style.setProperty('--exit-ease', 'cubic-bezier(0.2, 0.75, 0.35, 1)');
+        scrim.style.setProperty('--exit-dur', `${duration}ms`);
+        closeModal();
+        return;
+      }
+      offset = 0;
+      sheet.style.transition = 'transform 480ms var(--ease-ios)';
+      scrim.style.transition = 'opacity 320ms var(--ease-out)';
+      sheet.style.transform = '';
+      scrim.style.opacity = '';
+      settleTimer = window.setTimeout(() => {
+        sheet.style.transition = '';
+        scrim.style.transition = '';
+      }, 520);
+    };
+
+    const onTouchEnd = (event: TouchEvent) => {
+      if (phase !== 'dragging') {
+        phase = 'idle';
+        return;
+      }
+      phase = 'idle';
+      suppressClicksUntil = performance.now() + 400;
+      const last = samples[samples.length - 1];
+      const first = samples[0];
+      const resting = !last || event.timeStamp - last.t > 80;
+      const velocity = !resting && last && first && last.t > first.t ? (last.y - first.y) / (last.t - first.t) : 0;
+      settle(velocity);
+    };
+
+    // A drag that ends over a button must not also press it.
+    const onClickCapture = (event: MouseEvent) => {
+      if (performance.now() < suppressClicksUntil) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    sheet.addEventListener('touchstart', onTouchStart, { passive: true });
+    sheet.addEventListener('touchmove', onTouchMove, { passive: false });
+    sheet.addEventListener('touchend', onTouchEnd, { passive: true });
+    sheet.addEventListener('touchcancel', onTouchEnd, { passive: true });
+    sheet.addEventListener('click', onClickCapture, true);
     return () => {
-      el.removeEventListener('touchstart', onStart);
-      el.removeEventListener('touchmove', onMove);
-      el.removeEventListener('touchend', onEnd);
-      el.removeEventListener('touchcancel', onEnd);
+      sheet.removeEventListener('touchstart', onTouchStart);
+      sheet.removeEventListener('touchmove', onTouchMove);
+      sheet.removeEventListener('touchend', onTouchEnd);
+      sheet.removeEventListener('touchcancel', onTouchEnd);
+      sheet.removeEventListener('click', onClickCapture, true);
+      if (frame) cancelAnimationFrame(frame);
+      window.clearTimeout(settleTimer);
     };
-  }, [activeItem, closeModal]);
+  }, [isOpen, closing, entered, closeModal]);
 
-  const fetchUserCheckpoint = async () => {
-    if (!user || !activeItem) return;
-    try {
-      const cp = await getCheckpoint(user.uid, activeItem.id);
-      setCheckpointData(cp);
-    } catch(e) {
-      console.error('Error fetching checkpoint', e);
-    }
+  /* ---- Scroll-linked chrome ---- */
+
+  const dataKey = data ? `${data.mediaType}-${data.id}` : null;
+
+  // Compact title bar once the big title scrolls under the top edge.
+  useEffect(() => {
+    const title = titleRef.current;
+    const scroller = sheetRef.current;
+    if (!dataKey || !title || !scroller || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[entries.length - 1];
+        if (!entry) return;
+        const rootTop = entry.rootBounds?.top ?? 0;
+        setBarVisible(!entry.isIntersecting && entry.boundingClientRect.top < rootTop);
+      },
+      { root: scroller, rootMargin: '-60px 0px 0px 0px' }
+    );
+    observer.observe(title);
+    return () => observer.disconnect();
+  }, [dataKey]);
+
+  // Only offer "more" when the (mobile) clamp actually hides text.
+  useLayoutEffect(() => {
+    const el = overviewRef.current;
+    if (!el) return;
+    const measure = () => setOverviewClamped(el.scrollHeight - el.clientHeight > 1);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [dataKey, overviewExpanded]);
+
+  const scrollToTop = () => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    sheetRef.current?.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+  };
+
+  /* ---- Actions ---- */
+
+  const closeForNavigation = (event: ReactMouseEvent) => {
+    if (isModifiedClick(event)) return;
+    skipExitRef.current = true;
+    closeModal();
   };
 
   const handleSetCheckpoint = async (seasonNum: number, episodeNum: number) => {
     if (!user || !activeItem) return;
+    haptic('success');
     setSettingCheckpoint(`${seasonNum}-${episodeNum}`);
     try {
       await setCheckpoint(user.uid, activeItem.id, seasonNum, episodeNum);
@@ -190,164 +676,39 @@ const MovieModal = () => {
       setSettingCheckpoint(null);
     }
   };
-  // Fetch trailer/teaser videos for movie or TV season
-  const fetchTrailer = async (seasonOverride?: number) => {
-    if (!activeItem) return;
-    setTrailer(null);
-    setTrailerLoading(true);
-    setTrailerError(false);
-    try {
-      const params = new URLSearchParams({ id: String(activeItem.id), type: activeItem.type });
-      if (activeItem.type === 'tv') {
-        const seasonToUse = seasonOverride ?? activeSeason ?? 1;
-        params.set('season', String(seasonToUse));
-      }
-      const res = await fetch(`/api/trailer?${params.toString()}`);
-      if (!res.ok) throw new Error('Failed to fetch trailer');
-      const json = await res.json();
-      const best = selectBestYoutubeTrailer(json.results || []);
-      setTrailer(best || null);
-    } catch (e) {
-      console.error('[MovieModal] fetchTrailer error:', e);
-      setTrailerError(true);
-    } finally {
-      setTrailerLoading(false);
-    }
-  };
 
-  const fetchDetails = async () => {
-    if (!activeItem) return;
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/details?id=${activeItem.id}&type=${activeItem.type}`);
-      if (!response.ok) throw new Error('Failed to fetch details');
-      const json = await response.json();
-      setData(json);
-      
-      if (activeItem.type === 'tv') {
-        const firstSeason = json.seasons?.[0]?.season_number ?? 1;
-        setActiveSeason(firstSeason);
-        fetchEpisodes(json.id, firstSeason);
-        // Fetch trailer for the selected season after details loaded
-        fetchTrailer(firstSeason);
-        return;
-      }
-      // Movie trailers are fetched in parallel from the activeItem effect.
-    } catch (error) {
-      console.error('Error fetching details:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchEpisodes = async (id: number, season: number) => {
-    setLoadingEpisodes(true);
-    try {
-      const response = await fetch(`/api/details?id=${id}&type=season&season=${season}`);
-      if (!response.ok) throw new Error('Failed to fetch episodes');
-      const json = await response.json();
-      setEpisodes(json);
-    } catch (error) {
-      console.error('Error fetching episodes:', error);
-    } finally {
-      setLoadingEpisodes(false);
-    }
-  };
-
-  const handleSeasonChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const season = parseInt(e.target.value);
+  const changeSeason = (season: number) => {
+    if (season === activeSeason || Number.isNaN(season)) return;
+    haptic('selection');
     setActiveSeason(season);
-    if (data) fetchEpisodes(data.id, season);
-    // Refetch trailer for new season (pass explicit season)
-    fetchTrailer(season);
-  };
-  // iframe-based player controls
-  useEffect(() => {
-    if (!trailer) return;
-    setTrailerReady(false);
-    setTrailerPlay(false);
-    setTrailerMuted(true);
-    const t = setTimeout(() => {
-      setTrailerPlay(true);
-      setTrailerReady(true);
-    }, 1000);
-    return () => clearTimeout(t);
-  }, [trailer]);
-
-  const handleMuteToggle = () => {
-    const iframe = playerRef.current;
-    if (iframe && iframe.contentWindow) {
-      try {
-        const cmd = trailerMuted ? 'unMute' : 'mute';
-        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: cmd, args: [] }), '*');
-        setTrailerMuted(m => !m);
-        setTrailerPlay(true);
-        return;
-      } catch (e) {
-        console.error('postMessage mute toggle error', e);
-      }
-    }
-    // fallback: just toggle state
-    setTrailerMuted(m => !m);
-    setTrailerPlay(true);
-  };
-
-  const handleFullScreen = () => {
-    const iframe = playerRef.current;
-    
-    if (isFullscreen) {
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      }
-      setIsFullscreen(false);
-      return;
-    }
-
-    if (!iframe) return;
-
-    if (iframe.requestFullscreen) {
-      iframe.requestFullscreen().catch(() => {
-        setIsFullscreen(true);
-      });
-    } else if ((iframe as any).webkitRequestFullscreen) {
-      (iframe as any).webkitRequestFullscreen();
-    } else if ((iframe as any).mozRequestFullScreen) {
-      (iframe as any).mozRequestFullScreen();
-    } else if ((iframe as any).msRequestFullscreen) {
-      (iframe as any).msRequestFullscreen();
-    } else {
-      // Fallback for browsers that don't support iframe fullscreen (like iOS Safari)
-      setIsFullscreen(true);
+    if (data) {
+      fetchEpisodes(data.id, season);
+      // Each season has its own trailer.
+      fetchTrailer(data.id, 'tv', season);
     }
   };
-
-  // Listen for native fullscreen exit
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) {
-        setIsFullscreen(false);
-      }
-    };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
 
   const handleToggleWatchlist = async () => {
     if (!user || !data || adding) return;
+    const removing = isInList(data.id);
+    haptic(removing ? 'light' : 'success');
     setAdding(true);
     try {
-      if (isInList(data.id)) {
+      if (removing) {
         await removeItem(data.id);
       } else {
-        await addItem({
-          id: data.id,
-          title: data.title,
-          overview: data.description,
-          poster_path: data.image?.replace('https://image.tmdb.org/t/p/w500', '') || '',
-          backdrop_path: data.backdrop?.replace('https://image.tmdb.org/t/p/original', '') || '',
-          release_date: data.year,
-          vote_average: parseFloat(data.rating),
-        }, data.mediaType);
+        await addItem(
+          {
+            id: data.id,
+            title: data.title,
+            overview: data.description,
+            poster_path: data.image?.replace('https://image.tmdb.org/t/p/w500', '') || '',
+            backdrop_path: data.backdrop?.replace('https://image.tmdb.org/t/p/original', '') || '',
+            release_date: data.year,
+            vote_average: parseFloat(data.rating),
+          },
+          data.mediaType
+        );
       }
     } catch (error) {
       console.error('Error toggling watchlist:', error);
@@ -358,466 +719,502 @@ const MovieModal = () => {
 
   const handleToggleReminder = () => {
     if (!data) return;
+    haptic('selection');
     toggleReminder({ id: data.id, title: data.title, mediaType: data.mediaType, preloaded: data });
   };
 
-  const formatCurrency = (amount?: number) => {
-    if (amount == null) return 'N/A';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  if (!rendered) return null;
 
-  const formatRuntime = (minutes?: number) => {
-    if (minutes == null) return 'N/A';
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-  };
+  /* ---- Derived view data ---- */
 
-  const formatDate = (date?: string) => {
-    if (!date) return 'N/A';
-    const parsed = new Date(date);
-    if (Number.isNaN(parsed.getTime())) return 'N/A';
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    }).format(parsed);
-  };
+  let content: ReactNode;
+  if (data) {
+    const isTV = data.mediaType === 'tv';
+    const inList = isInList(data.id);
+    const rec = getRecommendation(data.id, data.mediaType);
+    const backdropRaw = usableImage(data.backdrop);
+    const heroBackdrop = tmdbSized(backdropRaw, 'w1280');
+    const heroPoster = usableImage(data.image);
+    const providers = data.providerLink && data.providers && data.providers.length > 0 ? data.providers : null;
+    const genres = data.genres?.map((g) => g.name).filter(Boolean) ?? [];
+    const seasons = data.seasons?.filter((s) => s.season_number > 0) ?? [];
+    const ratingValue = parseFloat(data.rating);
+    const runtimeText = isTV ? null : formatRuntime(data.runtime);
+    const seasonText = isTV && seasons.length > 0 ? `${seasons.length} Season${seasons.length > 1 ? 's' : ''}` : null;
+    const cast = data.cast ?? [];
+    const recommendations = data.recommendations ?? [];
+    const showRatingPanel = (rec && !isAdmin) || !!user;
 
-  const formatList = (items?: string[]) => {
-    if (!items || items.length === 0) return null;
-    return items.join(', ');
-  };
+    const facts: Fact[] = [];
+    const isLong = (text: string | null) => !!text && text.length > 24;
+    const genreText = joinList(genres);
+    if (genreText) facts.push({ key: 'genres', label: 'Genres', value: genreText, desktopOnly: true });
+    if (data.releaseDate) {
+      facts.push({
+        key: 'release',
+        label: isTV ? 'First Air Date' : 'Release Date',
+        value: formatDisplayDate(data.releaseDate, 'N/A'),
+      });
+    }
+    if (data.status) facts.push({ key: 'status', label: 'Status', value: data.status });
+    if (!isTV && data.releaseHistory && data.releaseHistory.length > 0) {
+      facts.push({
+        key: 'schedule',
+        label: 'Release Schedule',
+        wide: data.releaseHistory.length > 1,
+        value: (
+          <ul className={styles.schedule}>
+            {data.releaseHistory.map((entry) => (
+              <li key={`${entry.type}-${entry.date}`}>
+                <span className={styles.scheduleTag}>{entry.label}</span>
+                <span className={styles.scheduleDate}>{formatDisplayDate(entry.date, 'N/A')}</span>
+              </li>
+            ))}
+          </ul>
+        ),
+      });
+    }
+    if (!isTV && data.directors && data.directors.length > 0) {
+      const directors = data.directors;
+      facts.push({
+        key: 'directors',
+        label: `Director${directors.length > 1 ? 's' : ''}`,
+        wide: isLong(directors.map((d) => d.name).join(', ')),
+        value: directors.map((director, index) => (
+          <span key={director.id}>
+            <Link href={`/star/${director.id}`} className={styles.inlineLink} onClick={closeForNavigation}>
+              {director.name}
+            </Link>
+            {index < directors.length - 1 ? ', ' : ''}
+          </span>
+        )),
+      });
+    }
+    const creators = isTV ? joinList(data.creators) : null;
+    if (creators) {
+      facts.push({ key: 'creators', label: `Creator${(data.creators?.length ?? 0) > 1 ? 's' : ''}`, value: creators, wide: isLong(creators) });
+    }
+    const studios = joinList(data.productionStudios);
+    if (studios) facts.push({ key: 'studios', label: 'Production Studios', value: studios, wide: isLong(studios) });
+    const countries = joinList(data.productionCountries);
+    if (countries) facts.push({ key: 'countries', label: 'Production Countries', value: countries, wide: isLong(countries) });
+    const languages = joinList(data.spokenLanguages);
+    if (languages) facts.push({ key: 'languages', label: 'Spoken Languages', value: languages, wide: isLong(languages) });
+    if (typeof data.budget === 'number' && data.budget > 0) {
+      facts.push({ key: 'budget', label: 'Budget', value: formatCurrency(data.budget) });
+    }
+    if (typeof data.revenue === 'number' && data.revenue > 0) {
+      facts.push({ key: 'revenue', label: 'Revenue', value: formatCurrency(data.revenue) });
+    }
 
-  if (!activeItem) return null;
-
-  const rec = data ? getRecommendation(data.id, data.mediaType) : undefined;
-
-  return (
-    <div className={styles.overlay} onClick={closeModal}>
-      <div
-        className={styles.modal}
-        onClick={(e) => e.stopPropagation()}
-        ref={modalRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={data?.title || 'Title details'}
-        tabIndex={-1}
-      >
-        <span className={styles.grabber} aria-hidden="true" />
-        <button className={styles.closeButton} onClick={closeModal} aria-label="Close">×</button>
-
-        {/* Trailer Section moved into hero to avoid being covered by backdrop */}
-
-        {loading ? (
-          <div className={styles.loading}>
-            <div className={styles.spinner}></div>
+    content = (
+      <div key={dataKey} className={styles.content}>
+        <header className={styles.head}>
+          <div className={styles.hero} data-sheet-handle>
+            <TrailerPlayer
+              videoKey={trailer?.key ?? null}
+              title={data.title}
+              backdrop={heroBackdrop}
+              poster={heroPoster}
+              sizes={HERO_SIZES}
+              active={entered && !closing}
+            />
           </div>
-        ) : data ? (
-          <>
-            <div className={styles.hero}>
-              {data.backdrop && (
-                <Image
-                  src={data.backdrop}
-                  alt={data.title}
-                  fill
-                  priority
-                  sizes="(max-width: 900px) 100vw, 900px"
-                  className={`${styles.backdrop} ${trailer ? styles.backdropHidden : ''}`}
-                />
-              )}
-              {trailer && (
-                <div className={`${styles.trailerHero} ${trailerReady ? styles.trailerVisible : ''} ${isFullscreen ? styles.fullscreenTrailer : ''}`}>
-                  <iframe
-                    ref={playerRef}
-                    title={trailer.name}
-                    src={`https://www.youtube.com/embed/${trailer.key}?enablejsapi=1&autoplay=0&controls=0&rel=0&modestbranding=1`}
-                    width="100%"
-                    height="100%"
-                    frameBorder="0"
-                    allowFullScreen
-                    allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                    onError={() => setTrailerError(true)}
-                    className={styles.trailerIframe}
-                    onLoad={() => {
-                      // when iframe loads, mute and (after 1s) play
-                      try {
-                        const win = playerRef.current?.contentWindow;
-                        if (win) {
-                          // ensure muted
-                          win.postMessage(JSON.stringify({ event: 'command', func: 'mute', args: [] }), '*');
-                          setTimeout(() => {
-                            win.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
-                            setTrailerPlay(true);
-                            setTrailerReady(true);
-                          }, 1000);
-                        }
-                      } catch (e) {
-                        console.error('iframe onLoad postMessage error', e);
-                      }
-                    }}
-                  />
-                  <div className={styles.trailerHeroControls}>
-                      <button
-                        onClick={handleMuteToggle}
-                        className={`${styles.trailerMuteBtn} ${!trailerMuted ? styles.active : ''}`}
-                        aria-label={trailerMuted ? 'Unmute trailer' : 'Mute trailer'}
-                        title={trailerMuted ? 'Unmute trailer' : 'Mute trailer'}
-                      >
-                        {trailerMuted ? (
-                          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5 9v6h4l5 5V4L9 9H5z"/></svg>
-                        ) : (
-                          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5 9v6h4l5 5V4L9 9H5z"/><path d="M16.5 12c0-1.77-.77-3.37-2-4.47v8.94c1.23-1.1 2-2.7 2-4.47z"/></svg>
-                        )}
-                      </button>
-                    <button onClick={handleFullScreen} className={styles.trailerFullscreenBtn} aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen trailer"} title={isFullscreen ? "Exit fullscreen" : "Fullscreen trailer"}>
-                      {isFullscreen ? (
-                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                          <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
-                        </svg>
-                      ) : (
-                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                          <path d="M7 3H3V7H5V5H7V3ZM21 3H17V5H19V7H21V3ZM3 17H5V19H7V21H3V17ZM19 19H17V21H21V17H19V19Z" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
-              <div className={styles.heroGradient} />
-              <div className={styles.heroContent}>
-                {data.tagline && <span className={styles.tagline}>{data.tagline}</span>}
-                <h2 className={styles.title}>{data.title}</h2>
-                <div className={styles.actions}>
-                  {data.providerLink && data.providers && data.providers.length > 0 && (
-                    <a 
-                      href={data.providerLink} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className={styles.providerLink}
-                    >
-                      <span className={styles.providerText}>Watch on</span>
-                      <div className={styles.modalProviderLogos}>
-                        {data.providers.map(p => (
-                          <img key={p.id} src={p.logo} alt={p.name} title={p.name} className={styles.modalProviderLogo} />
-                        ))}
-                      </div>
-                    </a>
-                  )}
-                  {user && (
-                    <button 
-                      className={`${styles.watchlistButton} ${isInList(data.id) ? styles.inList : ''}`}
-                      onClick={handleToggleWatchlist}
-                      disabled={adding}
-                      aria-label={isInList(data.id) ? 'Remove from My List' : 'Add to My List'}
-                      title={isInList(data.id) ? 'Remove from My List' : 'Add to My List'}
-                    >
-                      {adding ? (
-                        <svg className={styles.watchlistSpinner} viewBox="0 0 24 24" aria-hidden="true">
-                          <circle cx="12" cy="12" r="9" />
-                        </svg>
-                      ) : isInList(data.id) ? (
-                        <svg className={styles.watchlistIcon} viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M5 12.5L10 17L19 8" />
-                        </svg>
-                      ) : (
-                        <svg className={styles.watchlistIcon} viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M12 5V19M5 12H19" />
-                        </svg>
-                      )}
-                    </button>
-                  )}
-                  {user && isInList(data.id) && !data.isHD && (
-                    <button 
-                      className={`${styles.bellButton} ${hasReminder(data.id) ? styles.active : ''}`} 
-                      title={hasReminder(data.id) ? 'Remove Reminder' : 'Set Reminder'}
-                      onClick={handleToggleReminder}
-                      disabled={addingRem}
-                    >
-                      <span className={styles.bellIcon}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22ZM18 16V11C18 7.93 16.37 5.36 13.5 4.68V4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4V4.68C7.64 5.36 6 7.92 6 11V16L4 18V19H20V18L18 16Z"/>
-                        </svg>
-                      </span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
 
-            <div className={styles.content}>
-              <div className={styles.mainInfo}>
-                <div className={styles.metaRow}>
-                  <div className={styles.metaBadge}>
-                    <span className={styles.metaStar}>★</span> {data.rating}
-                  </div>
-                  <span className={styles.metaYear}>{data.year}</span>
-                  <span className={styles.metaType}>{data.mediaType === 'tv' ? 'TV Series' : 'Movie'}</span>
-                  {data.mediaType === 'movie' && (
-                    <span className={data.isHD ? styles.hdBadge : styles.sdBadge}>
-                      {data.isHD ? 'HD' : 'SD'}
-                    </span>
-                  )}
-                </div>
-                {((rec && !isAdmin) || user) && (
-                  <div className={styles.ratingPanel}>
-                    {rec && !isAdmin && (
-                      <div className={styles.ratingBlock}>
-                        <span className={styles.metaLabel}>{ADMIN_NAME}&apos;s rating</span>
-                        <StarRating value={rec.stars} size="md" tone="accent" />
-                      </div>
-                    )}
-                    {user && (
-                      <div className={styles.ratingBlock}>
-                        <span className={styles.metaLabel}>
-                          {isAdmin ? 'Your recommendation · public' : 'Your rating'}
-                        </span>
-                        {isInList(data.id) ? (
-                          <StarRating
-                            value={getRating(data.id)}
-                            onChange={(stars) => setRating(data.id, stars)}
-                            size="md"
-                            label={isAdmin ? `Recommend ${data.title}` : `Rate ${data.title}`}
-                          />
-                        ) : (
-                          <span className={styles.ratingHint}>Add to My List to rate it</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-                <p className={styles.overview}>{data.description}</p>
-                <div className={styles.metaGrid}>
-                  {data.genres && (
-                    <div className={styles.metaItem}>
-                      <span className={styles.metaLabel}>Genres</span>
-                      <span className={styles.metaValue}>{data.genres.map(g => g.name).join(', ')}</span>
-                    </div>
-                  )}
-                  {typeof data.runtime === 'number' && data.runtime > 0 && (
-                    <div className={styles.metaItem}>
-                      <span className={styles.metaLabel}>Runtime</span>
-                      <span className={styles.metaValue}>{formatRuntime(data.runtime)}</span>
-                    </div>
-                  )}
-                  {data.releaseDate && (
-                    <div className={styles.metaItem}>
-                      <span className={styles.metaLabel}>{data.mediaType === 'tv' ? 'First Air Date' : 'Release Date'}</span>
-                      <span className={styles.metaValue}>{formatDate(data.releaseDate)}</span>
-                    </div>
-                  )}
-                  {data.status && (
-                    <div className={styles.metaItem}>
-                      <span className={styles.metaLabel}>Status</span>
-                      <span className={styles.metaValue}>{data.status}</span>
-                    </div>
-                  )}
-                  {data.mediaType === 'movie' && data.releaseHistory && data.releaseHistory.length > 0 && (
-                    <div className={styles.metaItem}>
-                      <span className={styles.metaLabel}>Release Schedule</span>
-                      <ul className={styles.releaseScheduleList}>
-                        {data.releaseHistory.map((entry) => (
-                          <li key={`${entry.type}-${entry.date}`} className={styles.releaseScheduleItem}>
-                            <span className={styles.releaseScheduleTag}>{entry.label}</span>
-                            <span className={styles.releaseScheduleDate}>{formatDate(entry.date)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {data.mediaType === 'movie' && data.directors && data.directors.length > 0 && (
-                    <div className={styles.metaItem}>
-                      <span className={styles.metaLabel}>Director{data.directors && data.directors.length > 1 ? 's' : ''}</span>
-                      <span className={styles.metaValue}>
-                        <span className={styles.directorLinks}>
-                          {data.directors?.map((director, index) => (
-                            <span key={director.id}>
-                              <Link href={`/star/${director.id}`} className={styles.directorLink} onClick={closeModal}>
-                                {director.name}
-                              </Link>
-                              {index < (data.directors?.length || 0) - 1 ? ', ' : ''}
-                            </span>
-                          ))}
-                        </span>
-                      </span>
-                    </div>
-                  )}
-                  {data.mediaType === 'tv' && formatList(data.creators) && (
-                    <div className={styles.metaItem}>
-                      <span className={styles.metaLabel}>Creator{data.creators && data.creators.length > 1 ? 's' : ''}</span>
-                      <span className={styles.metaValue}>{formatList(data.creators)}</span>
-                    </div>
-                  )}
-                  {formatList(data.productionStudios) && (
-                    <div className={styles.metaItem}>
-                      <span className={styles.metaLabel}>Production Studios</span>
-                      <span className={styles.metaValue}>{formatList(data.productionStudios)}</span>
-                    </div>
-                  )}
-                  {formatList(data.productionCountries) && (
-                    <div className={styles.metaItem}>
-                      <span className={styles.metaLabel}>Production Countries</span>
-                      <span className={styles.metaValue}>{formatList(data.productionCountries)}</span>
-                    </div>
-                  )}
-                  {formatList(data.spokenLanguages) && (
-                    <div className={styles.metaItem}>
-                      <span className={styles.metaLabel}>Spoken Languages</span>
-                      <span className={styles.metaValue}>{formatList(data.spokenLanguages)}</span>
-                    </div>
-                  )}
-                  {typeof data.budget === 'number' && data.budget > 0 && (
-                    <div className={styles.metaItem}>
-                      <span className={styles.metaLabel}>Budget</span>
-                      <span className={styles.metaValue}>{formatCurrency(data.budget)}</span>
-                    </div>
-                  )}
-                  {typeof data.revenue === 'number' && data.revenue > 0 && (
-                    <div className={styles.metaItem}>
-                      <span className={styles.metaLabel}>Revenue</span>
-                      <span className={styles.metaValue}>{formatCurrency(data.revenue)}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+          <div className={styles.titleBlock}>
+            {data.tagline && <p className={styles.tagline}>{data.tagline}</p>}
+            <h2 id={titleId} ref={titleRef} className={styles.title}>
+              {data.title}
+            </h2>
+            <ul className={styles.meta} aria-label="Details">
+              {Number.isFinite(ratingValue) && ratingValue > 0 && (
+                <li className={styles.metaRating} aria-label={`Rated ${data.rating} out of 10`}>
+                  <StarGlyph />
+                  {data.rating}
+                </li>
+              )}
+              {data.year && data.year !== 'N/A' && <li>{data.year}</li>}
+              {runtimeText && <li>{runtimeText}</li>}
+              {seasonText && <li>{seasonText}</li>}
+              <li>{isTV ? 'TV Series' : 'Movie'}</li>
+              {!isTV && (
+                <li>
+                  <span className={`${styles.qualityBadge} ${data.isHD ? styles.qualityHD : ''}`}>
+                    {data.isHD ? 'HD' : 'SD'}
+                  </span>
+                </li>
+              )}
+            </ul>
 
-            {data.cast && data.cast.length > 0 && (
-              <div className={styles.castSection}>
-                <h3 className={styles.castTitle}>Cast</h3>
-                <div className={styles.castCarousel}>
-                  {data.cast.map(member => (
-                    <Link href={`/star/${member.id}`} key={member.id} className={styles.castMember} onClick={closeModal} style={{ textDecoration: 'none' }}>
-                      <div className={styles.castImageWrapper}>
-                        {member.profile_path ? (
-                          <img src={member.profile_path} alt={member.name} className={styles.castImage} />
-                        ) : (
-                          <div className={styles.noCastImage}>👤</div>
-                        )}
-                      </div>
-                      <span className={styles.castName}>{member.name}</span>
-                      <span className={styles.castCharacter}>{member.character}</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+            {genres.length > 0 && (
+              <ul className={styles.chips} aria-label="Genres" data-hscroll>
+                {genres.map((genre) => (
+                  <li key={genre} className={styles.chip}>
+                    {genre}
+                  </li>
+                ))}
+              </ul>
             )}
 
-            {data.mediaType === 'tv' && data.seasons && (
-              <div className={styles.tvContainer}>
-                <div className={styles.seasonSelect}>
-                  <h3>Episodes</h3>
-                  {data.seasons.length > 1 && (
-                    <select 
-                      className={styles.seasonDropdown} 
-                      value={activeSeason}
-                      onChange={handleSeasonChange}
-                    >
-                      {data.seasons
-                        .filter(s => s.season_number > 0)
-                        .map(s => (
-                          <option key={s.id} value={s.season_number}>{s.name}</option>
-                        ))
-                      }
-                    </select>
+            {(providers || user) && (
+              <div className={styles.actions}>
+                {providers && data.providerLink && (
+                  <a href={data.providerLink} target="_blank" rel="noopener noreferrer" className={styles.watchButton}>
+                    <span className={styles.watchLabel}>Watch on</span>
+                    <span className={styles.watchLogos}>
+                      {providers.slice(0, MAX_PROVIDER_LOGOS).map((p) => (
+                        <img
+                          key={p.id}
+                          src={tmdbSized(p.logo, 'w92') ?? p.logo}
+                          alt={p.name}
+                          title={p.name}
+                          width={28}
+                          height={28}
+                          decoding="async"
+                          className={styles.watchLogo}
+                        />
+                      ))}
+                      {providers.length > MAX_PROVIDER_LOGOS && (
+                        <span className={styles.watchMore}>+{providers.length - MAX_PROVIDER_LOGOS}</span>
+                      )}
+                    </span>
+                    <IconArrowUpRight className={styles.watchArrow} />
+                  </a>
+                )}
+                {user && (
+                  <button
+                    type="button"
+                    className={`${styles.roundButton} ${inList ? styles.isOn : ''} ${providers ? '' : styles.listWide}`}
+                    onClick={handleToggleWatchlist}
+                    disabled={adding}
+                    aria-label={inList ? 'Remove from My List' : 'Add to My List'}
+                    title={inList ? 'Remove from My List' : 'Add to My List'}
+                  >
+                    {adding ? (
+                      <Spinner />
+                    ) : (
+                      <span key={inList ? 'in' : 'out'} className={styles.popIcon}>
+                        {inList ? <CheckIcon /> : <PlusIcon />}
+                      </span>
+                    )}
+                    {!providers && <span className={styles.listLabel}>{inList ? 'In My List' : 'My List'}</span>}
+                  </button>
+                )}
+                {user && inList && !data.isHD && (
+                  <button
+                    type="button"
+                    className={`${styles.roundButton} ${styles.bellButton} ${hasReminder(data.id) ? styles.isOn : ''}`}
+                    onClick={handleToggleReminder}
+                    disabled={addingRem}
+                    aria-label={hasReminder(data.id) ? 'Remove reminder' : 'Set reminder'}
+                    aria-pressed={hasReminder(data.id)}
+                    title={hasReminder(data.id) ? 'Remove Reminder' : 'Set Reminder'}
+                  >
+                    <span key={hasReminder(data.id) ? 'on' : 'off'} className={styles.popIcon}>
+                      <BellIcon />
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </header>
+
+        <div className={styles.body}>
+          {showRatingPanel && (
+            <div className={styles.ratingPanel}>
+              {rec && !isAdmin && (
+                <div className={styles.ratingBlock}>
+                  <span className={styles.label}>{ADMIN_NAME}&apos;s rating</span>
+                  <StarRating value={rec.stars} size="md" tone="accent" />
+                </div>
+              )}
+              {user && (
+                <div className={styles.ratingBlock}>
+                  <span className={styles.label}>{isAdmin ? 'Your recommendation · public' : 'Your rating'}</span>
+                  {inList ? (
+                    <StarRating
+                      value={getRating(data.id)}
+                      onChange={(stars) => {
+                        haptic('selection');
+                        setRating(data.id, stars);
+                      }}
+                      size="md"
+                      label={isAdmin ? `Recommend ${data.title}` : `Rate ${data.title}`}
+                    />
+                  ) : (
+                    <span className={styles.ratingHint}>Add to My List to rate it</span>
                   )}
                 </div>
+              )}
+            </div>
+          )}
 
-                <div className={styles.episodesGrid}>
-                  {loadingEpisodes ? (
-                    <div className={styles.loading}>
-                      <div className={styles.spinner}></div>
-                    </div>
-                  ) : episodes.map(ep => (
-                    <div key={ep.id} className={styles.episodeRow}>
-                      <div className={styles.episodeNumber}>{ep.episode_number}</div>
-                      <img 
-                        src={ep.still_path || data.backdrop} 
-                        alt={ep.name} 
-                        className={styles.episodeImage} 
+          {data.description && (
+            <div className={styles.overviewWrap}>
+              <p
+                ref={overviewRef}
+                className={`${styles.overview} ${overviewExpanded ? styles.overviewOpen : ''}`}
+                onClick={overviewClamped && !overviewExpanded ? () => setOverviewExpanded(true) : undefined}
+              >
+                {data.description}
+              </p>
+              {overviewClamped && !overviewExpanded && (
+                <button
+                  type="button"
+                  className={styles.moreToggle}
+                  onClick={() => setOverviewExpanded(true)}
+                  aria-expanded={false}
+                >
+                  more
+                </button>
+              )}
+            </div>
+          )}
+
+          {facts.length > 0 && (
+            <dl className={styles.facts}>
+              {facts.map((fact) => (
+                <div
+                  key={fact.key}
+                  className={`${styles.fact} ${fact.wide ? styles.factWide : ''} ${fact.desktopOnly ? styles.factDesktop : ''}`}
+                >
+                  <dt className={styles.label}>{fact.label}</dt>
+                  <dd>{fact.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+
+        {cast.length > 0 && (
+          <section className={styles.section} aria-labelledby={`${uid}-cast`}>
+            <div className={styles.sectionHead}>
+              <h3 id={`${uid}-cast`} className={styles.sectionTitle}>
+                Cast
+              </h3>
+              <span className={styles.sectionRule} aria-hidden="true" />
+            </div>
+            <div className={`${styles.row} ${styles.castRow}`} data-hscroll>
+              {cast.map((member) => (
+                <Link
+                  href={`/star/${member.id}`}
+                  key={member.id}
+                  className={styles.castCard}
+                  onClick={closeForNavigation}
+                >
+                  <span className={styles.castAvatar}>
+                    {member.profile_path ? (
+                      <img
+                        src={member.profile_path}
+                        alt=""
+                        width={120}
+                        height={120}
+                        loading="lazy"
+                        decoding="async"
+                        draggable={false}
+                        className={styles.castImage}
                       />
-                      <div className={styles.episodeInfo}>
-                        <div className={styles.episodeTitleRow}>
-                          <div className={styles.episodeTitleLeft}>
-                            <h4>{ep.name}</h4>
-                            <div className={styles.episodeMetaLine}>
-                              <span className={styles.episodeIndex}>E{ep.episode_number}</span>
-                              {ep.air_date && (
-                                <span className={styles.episodeDate} title={formatDate(ep.air_date)}>
-                                  {formatDate(ep.air_date)}
-                                </span>
-                              )}
-                              {typeof ep.runtime === 'number' && ep.runtime > 0 && (
-                                <span className={styles.episodeRuntime}>{formatRuntime(ep.runtime)}</span>
-                              )}
-                            </div>
-                          </div>
+                    ) : (
+                      <span className={styles.castInitials} aria-hidden="true">
+                        {initials(member.name)}
+                      </span>
+                    )}
+                  </span>
+                  <span className={styles.castName}>{member.name}</span>
+                  {member.character && <span className={styles.castRole}>{member.character}</span>}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {isTV && data.seasons && (
+          <section className={styles.section} aria-labelledby={`${uid}-episodes`}>
+            <div className={`${styles.sectionHead} ${styles.episodesHead}`}>
+              <h3 id={`${uid}-episodes`} className={styles.sectionTitle}>
+                Episodes
+              </h3>
+              <span className={styles.sectionRule} aria-hidden="true" />
+              {seasons.length > 1 &&
+                (seasons.length <= 6 ? (
+                  <div className={styles.seasonChips} role="group" aria-label="Season" data-hscroll>
+                    {seasons.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        className={`${styles.seasonChip} ${s.season_number === activeSeason ? styles.seasonChipActive : ''}`}
+                        aria-pressed={s.season_number === activeSeason}
+                        onClick={() => changeSeason(s.season_number)}
+                      >
+                        {s.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <label className={styles.seasonSelectWrap}>
+                    <span className="sr-only">Season</span>
+                    <select
+                      className={styles.seasonSelect}
+                      value={activeSeason}
+                      onChange={(e) => changeSeason(parseInt(e.target.value, 10))}
+                    >
+                      {seasons.map((s) => (
+                        <option key={s.id} value={s.season_number}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown />
+                  </label>
+                ))}
+            </div>
+
+            <div className={styles.episodes} aria-busy={loadingEpisodes}>
+              {loadingEpisodes ? (
+                <EpisodeSkeletons />
+              ) : episodes.length === 0 ? (
+                <p className={styles.emptyNote}>No episode details yet.</p>
+              ) : (
+                episodes.map((ep) => {
+                  const isCurrent =
+                    checkpoint?.seasonNumber === activeSeason && checkpoint?.episodeNumber === ep.episode_number;
+                  const saving = settingCheckpoint === `${activeSeason}-${ep.episode_number}`;
+                  const still = usableImage(ep.still_path) ?? tmdbSized(backdropRaw, 'w300');
+                  const airDate = formatDisplayDate(ep.air_date);
+                  const runtime = formatRuntime(ep.runtime);
+                  return (
+                    <article key={ep.id} className={`${styles.episode} ${isCurrent ? styles.episodeCurrent : ''}`}>
+                      <span className={styles.epNumber} aria-hidden="true">
+                        {ep.episode_number}
+                      </span>
+                      <span className={styles.epStill}>
+                        {still && (
+                          <img src={still} alt="" loading="lazy" decoding="async" draggable={false} width={300} height={169} />
+                        )}
+                      </span>
+                      <div className={styles.epInfo}>
+                        <div className={styles.epTop}>
+                          <h4 className={styles.epTitle}>{ep.name}</h4>
                           {user && (
                             <button
-                              className={`${styles.checkpointBtn} ${checkpoint?.seasonNumber === activeSeason && checkpoint?.episodeNumber === ep.episode_number ? styles.isCheckpoint : ''}`}
+                              type="button"
+                              className={`${styles.checkpointButton} ${isCurrent ? styles.checkpointActive : ''}`}
                               onClick={() => handleSetCheckpoint(activeSeason, ep.episode_number)}
+                              disabled={saving}
+                              aria-pressed={isCurrent}
+                              aria-label={`Mark S${activeSeason} · E${ep.episode_number} as your checkpoint`}
                               title="Mark as Current Checkpoint"
-                              disabled={settingCheckpoint === `${activeSeason}-${ep.episode_number}`}
                             >
-                              {settingCheckpoint === `${activeSeason}-${ep.episode_number}` ? (
-                                <svg className={styles.watchlistSpinner} viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <circle cx="12" cy="12" r="10"></circle>
-                                </svg>
-                              ) : (
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                                </svg>
-                              )}
+                              {saving ? <Spinner /> : <BookmarkIcon />}
                             </button>
                           )}
                         </div>
-                        <p className={styles.episodeOverview}>{ep.overview || "No overview available."}</p>
+                        <div className={styles.epMeta}>
+                          <span className={styles.epIndex}>E{ep.episode_number}</span>
+                          {airDate && <span title={airDate}>{airDate}</span>}
+                          {runtime && <span>{runtime}</span>}
+                          {isCurrent && <span className={styles.epHere}>You&apos;re here</span>}
+                        </div>
+                        <p className={styles.epOverview}>{ep.overview || 'No overview available.'}</p>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                    </article>
+                  );
+                })
+              )}
+            </div>
+          </section>
+        )}
 
-            {data.recommendations && data.recommendations.length > 0 && (
-              <div className={styles.moreLikeThis}>
-                <h3 className={styles.moreHeading}>More Like This</h3>
-                <div className={styles.moreRow}>
-                  {data.recommendations.map((similar) => {
-                    const similarRec = getRecommendation(similar.id, similar.mediaType);
-                    return (
-                      <button
-                        key={`${similar.mediaType}-${similar.id}`}
-                        type="button"
-                        className={styles.moreCard}
-                        onClick={() => openModal(similar.id, similar.mediaType)}
-                        title={similar.title}
-                      >
-                        <span className={styles.morePosterWrap}>
-                          <img src={similar.image} alt={similar.title} className={styles.morePoster} loading="lazy" />
-                          {similarRec && (
-                            <span className={styles.moreRecBadge} title={`${ADMIN_NAME} rates this ${similarRec.stars}/5`}>
-                              <StarRating value={similarRec.stars} size="xs" tone="accent" />
-                            </span>
-                          )}
+        {recommendations.length > 0 && (
+          <section className={styles.section} aria-labelledby={`${uid}-more`}>
+            <div className={styles.sectionHead}>
+              <h3 id={`${uid}-more`} className={styles.sectionTitle}>
+                More Like This
+              </h3>
+              <span className={styles.sectionRule} aria-hidden="true" />
+            </div>
+            <div className={`${styles.row} ${styles.moreRow}`} data-hscroll>
+              {recommendations.map((similar) => {
+                const similarRec = getRecommendation(similar.id, similar.mediaType);
+                const poster = tmdbSized(usableImage(similar.image), 'w342');
+                return (
+                  <button
+                    key={`${similar.mediaType}-${similar.id}`}
+                    type="button"
+                    className={styles.moreCard}
+                    onClick={() => openModal(similar.id, similar.mediaType)}
+                    title={similar.title}
+                  >
+                    <span className={styles.morePoster}>
+                      {poster && (
+                        <img src={poster} alt="" loading="lazy" decoding="async" draggable={false} width={342} height={513} />
+                      )}
+                      {similarRec && (
+                        <span className={styles.moreRecBadge} title={`${ADMIN_NAME} rates this ${similarRec.stars}/5`}>
+                          <StarRating value={similarRec.stars} size="xs" tone="accent" />
                         </span>
-                        <span className={styles.moreCardTitle}>{similar.title}</span>
-                        <span className={styles.moreCardMeta}>★ {similar.rating} · {similar.year}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </>
-        ) : null}
+                      )}
+                    </span>
+                    <span className={styles.moreTitle}>{similar.title}</span>
+                    <span className={styles.moreMeta}>
+                      ★ {similar.rating} · {similar.year}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+      </div>
+    );
+  } else if (loadError) {
+    content = (
+      <div className={styles.errorState} role="alert">
+        <p className={styles.errorTitle}>We couldn&apos;t load this title.</p>
+        <p className={styles.errorText}>Check your connection and try again.</p>
+        <button type="button" className={styles.retryButton} onClick={() => setReloadToken((n) => n + 1)}>
+          Try again
+        </button>
+      </div>
+    );
+  } else {
+    content = <DetailSkeleton />;
+  }
+
+  return (
+    <div className={`${styles.root} ${closing ? styles.closing : ''}`}>
+      <div ref={scrimRef} className={styles.scrim} onClick={closeModal} aria-hidden="true" />
+      {/* The dialog is the scroll container; its chrome rides a zero-height sticky layer. */}
+      <div
+        ref={sheetRef}
+        className={styles.sheet}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={data ? titleId : undefined}
+        aria-label={data ? undefined : 'Title details'}
+        aria-busy={!data && !loadError}
+        tabIndex={-1}
+        onAnimationEnd={handleSheetAnimationEnd}
+      >
+        <div className={styles.chrome}>
+          <div
+            className={`${styles.bar} ${barVisible ? styles.barVisible : ''}`}
+            data-sheet-handle
+            onClick={scrollToTop}
+            aria-hidden="true"
+          >
+            <span className={styles.barTitle}>{data?.title}</span>
+          </div>
+          <div className={styles.handle} data-sheet-handle aria-hidden="true">
+            <span className={styles.grabber} />
+          </div>
+          <button type="button" className={styles.closeButton} onClick={closeModal} aria-label="Close">
+            <IconClose />
+          </button>
+        </div>
+        {content}
       </div>
     </div>
   );
-};
-
-export default MovieModal;
+}

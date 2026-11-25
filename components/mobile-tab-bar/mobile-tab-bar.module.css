@@ -1,0 +1,141 @@
+/* Desktop never shows the tab bar. The markup stays in the DOM, which is fine:
+   the global :has([data-mobile-tabbar]) offsets only apply ≤768px. */
+.tabbar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .tabbar {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--z-tabbar);
+    height: var(--tabbar-h);
+    padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
+    background: var(--glass-bg-strong);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: inset 0 0.5px 0 var(--hairline-strong);
+    transform: translateZ(0);
+    transition:
+      transform var(--dur-base) var(--ease-out),
+      opacity var(--dur-fast) var(--ease-out),
+      visibility 0s linear 0s;
+  }
+
+  /* On-screen keyboard is up: slide away (and come back when it closes). */
+  .tabbar[data-keyboard] {
+    transform: translateY(100%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      transform var(--dur-fast) var(--ease-in),
+      opacity var(--dur-fast) var(--ease-in),
+      visibility 0s linear var(--dur-fast);
+  }
+
+  .list {
+    display: flex;
+    align-items: stretch;
+    height: 54px;
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 0 4px;
+    list-style: none;
+    opacity: 0;
+    transform: translateY(3px);
+    transition:
+      opacity var(--dur-base) var(--ease-out),
+      transform var(--dur-base) var(--ease-out);
+  }
+
+  .tabbar[data-ready] .list {
+    opacity: 1;
+    transform: none;
+  }
+
+  .item {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+  }
+
+  .tab {
+    /* Tone used to "cut" details out of filled glyphs (clapperboard stripes). */
+    --tab-cutout: #0e0e10;
+
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding-top: 3px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    text-decoration: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    transition: color var(--dur-fast) var(--ease-out);
+  }
+
+  .tab[data-active] {
+    color: var(--accent-color);
+  }
+
+  .icon {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 26px;
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+
+  .icon svg {
+    width: 25px;
+    height: 25px;
+    overflow: visible;
+  }
+
+  /* Press feedback: the glyph dips while your finger is down. */
+  .tab:active .icon {
+    transform: scale(0.9);
+    transition-duration: var(--dur-instant);
+  }
+
+  /* Newly selected tab: a tiny spring pop. */
+  .icon[data-pop] {
+    animation: tabPop var(--dur-slow) var(--ease-spring);
+  }
+
+  .label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tab:focus-visible {
+    outline: none;
+  }
+
+  .tab:focus-visible .icon {
+    border-radius: var(--radius-xs);
+    box-shadow: 0 0 0 2px var(--accent-ring);
+  }
+}
+
+@keyframes tabPop {
+  from {
+    transform: scale(0.82);
+  }
+}

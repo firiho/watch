@@ -1,8 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
-interface ActiveItem {
+export interface ActiveItem {
   id: number;
   type: 'movie' | 'tv';
 }
@@ -15,25 +15,26 @@ interface ModalContextType {
 
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
 
+/**
+ * Which title the detail modal shows. The modal itself owns presentation —
+ * enter/exit animations and the body scroll lock (via useBodyScrollLock) — so
+ * closing here simply clears the item and the sheet animates out on its own.
+ */
 export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeItem, setActiveItem] = useState<ActiveItem | null>(null);
 
   const openModal = useCallback((id: number, type: 'movie' | 'tv') => {
     setActiveItem({ id, type });
-    // Prevent scrolling on body when modal is open
-    document.body.style.overflow = 'hidden';
   }, []);
 
   const closeModal = useCallback(() => {
     setActiveItem(null);
-    document.body.style.overflow = 'unset';
   }, []);
 
-  return (
-    <ModalContext.Provider value={{ activeItem, openModal, closeModal }}>
-      {children}
-    </ModalContext.Provider>
-  );
+  // Stable value: cards consuming the context don't re-render when a parent does.
+  const value = useMemo(() => ({ activeItem, openModal, closeModal }), [activeItem, openModal, closeModal]);
+
+  return <ModalContext.Provider value={value}>{children}</ModalContext.Provider>;
 };
 
 export const useModal = () => {

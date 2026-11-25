@@ -15,15 +15,9 @@ export default async function Home() {
       <HeroGallery items={featuredItems} />
 
       <div className={styles.contentSections}>
-        <ContentRail 
-          title="Trending Movies" 
-          data={trendingMovies} 
-        />
+        <ContentRail title="Trending Movies" data={trendingMovies} href="/movies" />
 
-        <ContentRail 
-          title="Trending TV Shows" 
-          data={trendingTVShows} 
-        />
+        <ContentRail title="Trending TV Shows" data={trendingTVShows} href="/tv-shows" />
       </div>
     </main>
   );

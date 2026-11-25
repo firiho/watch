@@ -1,145 +1,306 @@
+/* =============================================================================
+ * Home hero carousel
+ *
+ * Slides crossfade (the incoming slide fades in over the outgoing one, so the
+ * image never dips to black), the visible slide drifts with a slow Ken Burns
+ * zoom, and the text drifts in/out in the direction of travel. The active
+ * progress pill fills over the rotate interval and its `animationend` advances
+ * the carousel, so pausing the CSS animation pauses rotation exactly in sync.
+ *
+ * Desktop keeps the left-aligned layout; phones anchor the content to the
+ * bottom of a shorter hero over a strong scrim, with a CTA row for everyone.
+ * ========================================================================== */
+
 .heroGallery {
   position: relative;
+  isolation: isolate;
   width: 100%;
   height: 100vh;
+  height: 100svh;
   min-height: 700px;
   overflow: hidden;
   background-color: var(--bg-color);
 }
 
+.slides {
+  position: absolute;
+  inset: 0;
+  touch-action: pan-y pinch-zoom; /* horizontal swipes are ours, vertical scroll stays native */
+}
+
+/* ---- Slides ----------------------------------------------------------------- */
+
 .heroSlide {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
+  z-index: 0;
   opacity: 0;
-  transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1), transform 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-  transform: scale(1.05); /* Slight scale for depth */
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  z-index: 1;
+  transition: opacity var(--hero-fade, 1s) var(--ease-in-out);
 }
 
-.heroSlide.active {
-  opacity: 1;
-  transform: scale(1);
+.heroSlide[data-state='active'] {
   z-index: 2;
+  opacity: 1;
 }
 
-.backgroundImage {
+/* The outgoing slide stays opaque underneath while the new one fades in. */
+.heroSlide[data-state='leaving'] {
+  z-index: 1;
+  opacity: 1;
+}
+
+.mediaShift {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-size: cover;
-  background-position: center;
-  z-index: -1;
+  inset: 0 -24px; /* bleed so the swipe parallax never reveals an edge */
+  transition: transform var(--dur-slow) var(--ease-ios);
+}
+
+.heroSlide[data-state='active'] .mediaShift {
+  transform: translate3d(calc(var(--hero-drag, 0px) * 0.12), 0, 0);
+}
+
+.media {
+  position: absolute;
+  inset: 0;
+  transform-origin: var(--kb-origin, 50% 50%);
+}
+
+/* Ken Burns: keeps running through the crossfade so nothing snaps. */
+.heroSlide[data-state='active'] .media,
+.heroSlide[data-state='leaving'] .media {
+  animation: kenBurns calc(var(--hero-interval, 6s) + var(--hero-fade, 1s) + 400ms) linear both;
+}
+
+.heroGallery[data-paused] .heroSlide[data-state='active'] .media {
+  animation-play-state: paused;
+}
+
+@keyframes kenBurns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.06);
+  }
+}
+
+.mediaImage {
+  object-fit: cover;
+  object-position: center 30%;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
 }
 
 .overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  /* Shifted gradient to match the new content start at 100px */
-  background: linear-gradient(
-    90deg,
-    var(--bg-color) 0%,
-    rgba(0, 0, 0, 0.8) 30%,
-    rgba(0, 0, 0, 0.4) 50%,
-    transparent 100%
-  );
-  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  background:
+    /* top: keeps the navigation legible over bright skies */
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 18%),
+    /* bottom: melts into the page instead of ending on a hard edge */
+    linear-gradient(to top, var(--bg-color) 0%, rgba(0, 0, 0, 0.55) 12%, rgba(0, 0, 0, 0) 32%),
+    /* left: the text column */
+    linear-gradient(90deg, var(--bg-color) 0%, rgba(0, 0, 0, 0.8) 30%, rgba(0, 0, 0, 0.4) 50%, rgba(0, 0, 0, 0) 100%);
 }
 
+/* ---- Content ---------------------------------------------------------------- */
+
 .heroContentWrapper {
-  width: 100%;
-  padding: 80px 100px 0; /* Added top padding to shift content down */
-  position: relative;
+  position: absolute;
+  inset: 0;
   z-index: 3;
+  display: flex;
+  align-items: center;
+  padding: 80px 100px 0;
+}
+
+.contentShift {
+  width: 100%;
+  transition:
+    transform var(--dur-slow) var(--ease-ios),
+    opacity var(--dur-base) var(--ease-out);
+}
+
+.heroSlide[data-state='active'] .contentShift {
+  transform: translate3d(calc(var(--hero-drag, 0px) * 0.45), 0, 0);
+  opacity: var(--hero-drag-fade, 1);
+}
+
+/* Outgoing text drifts away in the direction of travel and fades quickly. */
+.heroSlide[data-state='leaving'] .contentShift {
+  transform: translate3d(calc(var(--hero-dir, 1) * -56px), 0, 0);
+  opacity: 0;
+  transition:
+    transform 520ms var(--ease-in),
+    opacity 260ms var(--ease-in);
+}
+
+.heroGallery[data-dragging] .mediaShift,
+.heroGallery[data-dragging] .contentShift {
+  transition: none;
 }
 
 .heroContent {
   position: relative;
   max-width: 50%;
-  opacity: 0;
   text-align: left;
+  opacity: 0;
 }
 
-.heroSlide.active .heroContent {
-  animation: slideUp 0.8s ease-out 0.2s forwards;
+.heroSlide[data-state='active'] .heroContent {
+  animation: contentIn 900ms var(--ease-out) 240ms both;
 }
 
-@keyframes slideUp {
+@keyframes contentIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translate3d(calc(var(--hero-dir, 1) * 36px), 0, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
-.heroTitle {
-  font-size: clamp(48px, 6vw, 90px);
-  font-weight: 800;
-  margin: 15px 0 25px;
-  line-height: 1;
-  color: var(--text-white);
-  cursor: pointer;
+.eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
 }
 
-.heroDescription {
-  font-size: 18px;
-  line-height: 1.6;
-  color: var(--text-secondary);
-  margin-bottom: 40px;
+.eyebrowFeatured {
+  color: var(--accent-color);
+}
+
+.eyebrowMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* short rule between "Featured" and the meta */
+.eyebrowMeta::before {
+  content: '';
+  width: 18px;
+  height: 1px;
+  margin-right: 4px;
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.eyebrowMeta > span + span::before {
+  content: '·';
+  margin-right: 8px;
+  color: rgba(255, 255, 255, 0.36);
+}
+
+.heroTitle {
+  margin: 0 0 22px;
+  padding-bottom: 0.08em; /* room for descenders under the line clamp */
+  font-size: clamp(48px, 6vw, 90px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text-white);
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
   display: -webkit-box;
-  line-clamp: 3;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.heroButtons {
-  display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
+.heroTitle[data-size='medium'] {
+  font-size: clamp(44px, 5vw, 76px);
 }
 
-.primaryButton {
-  min-width: 156px;
-  height: 50px;
-  padding: 0 18px;
-  border-radius: 8px;
-  color: #0a0a0a;
-  background-color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.85);
+.heroTitle[data-size='long'] {
+  font-size: clamp(38px, 4.2vw, 62px);
+  line-height: 1.04;
+}
+
+.heroDescription {
+  max-width: 60ch;
+  margin: 0 0 36px;
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---- Buttons ---------------------------------------------------------------- */
+
+.heroButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.primaryButton,
+.secondaryButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-  cursor: pointer;
-  box-shadow: none;
-  font-size: 14px;
+  min-width: 156px;
+  height: 50px;
+  padding: 0 22px;
+  border-radius: var(--radius-sm);
   font-family: var(--font-sans);
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: 0.2px;
-  text-transform: none;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
-.primaryButton:hover {
-  background-color: #f0f0f0;
-  border-color: #f0f0f0;
+.primaryButton {
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  background-color: #ffffff;
+  color: #0a0a0a;
 }
 
-.primaryButton:focus-visible {
+.primaryButton.inListBtn {
+  border-color: rgba(var(--accent-rgb), 0.68);
+  background-color: rgba(20, 20, 20, 0.86);
+  color: #c7fff0;
+}
+
+.secondaryButton {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.14);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  color: #ffffff;
+}
+
+.primaryButton:active:not(:disabled),
+.secondaryButton:active {
+  transform: scale(var(--press-scale));
+  transition-duration: var(--dur-instant);
+}
+
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible {
   outline: 2px solid var(--accent-color);
   outline-offset: 3px;
 }
@@ -149,26 +310,20 @@
   cursor: not-allowed;
 }
 
-.primaryButton.inListBtn {
-  background-color: rgba(20, 20, 20, 0.86);
-  border-color: rgba(100, 255, 218, 0.68);
-  color: #c7fff0;
-}
-
-.primaryButton.inListBtn:hover {
-  background-color: rgba(28, 28, 28, 0.92);
-  border-color: rgba(100, 255, 218, 0.9);
-  color: #e2fff6;
-}
-
 .buttonIcon {
-  width: 18px;
-  height: 18px;
+  flex: none;
+  width: 19px;
+  height: 19px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 2.6;
+  stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.iconDot {
+  fill: currentColor;
+  stroke-width: 2.2;
 }
 
 .buttonLabel {
@@ -176,8 +331,8 @@
 }
 
 .buttonSpinner {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -192,157 +347,336 @@
   }
 }
 
+/* ---- Progress pills --------------------------------------------------------- */
 
 .indicators {
   position: absolute;
-  bottom: 50px;
   right: 100px;
+  bottom: 48px;
   z-index: 10;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(100, 255, 218, 0.1);
-  border-radius: 50px;
+  padding: 0 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(var(--accent-rgb), 0.12);
+  background: rgba(0, 0, 0, 0.42);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
   box-shadow: 0 10px 30px -10px rgba(2, 12, 27, 0.7);
-  transition: var(--transition);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
 }
 
-.indicators:hover {
-  background: rgba(0, 0, 0, 0.6);
-  border-color: rgba(100, 255, 218, 0.2);
-}
-
-/* Worm-style pagination: inactive = small dots, active = elongated pill ( . . _ . ) */
 .indicator {
+  display: grid;
+  place-items: center;
+  height: 36px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  cursor: pointer;
+}
+
+.pill {
+  position: relative;
+  display: block;
   width: 7px;
   height: 7px;
-  border-radius: 999px;
-  background-color: rgba(255, 255, 255, 0.45);
-  border: none;
-  cursor: pointer;
-  transition: width 0.4s cubic-bezier(0.65, 0, 0.35, 1), background-color 0.3s ease, opacity 0.3s ease;
-  opacity: 0.7;
-  padding: 0;
-  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background-color: rgba(255, 255, 255, 0.42);
+  transition:
+    width 420ms var(--ease-in-out),
+    background-color var(--dur-fast) var(--ease-out);
 }
 
-.indicator:hover {
-  background-color: rgba(255, 255, 255, 0.8);
-  opacity: 1;
+.indicator[data-active] .pill {
+  width: 30px;
+  background-color: rgba(255, 255, 255, 0.32);
 }
 
-.indicator.activeIndicator {
-  width: 26px;
-  background-color: var(--accent-color);
-  opacity: 1;
-  box-shadow: 0 0 12px -2px var(--accent-color);
+.pillFill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--accent-color);
+  transform-origin: left center;
+  animation: pillProgress var(--hero-interval, 6s) linear both;
 }
+
+.pillFillStatic {
+  animation: none;
+}
+
+.heroGallery[data-paused] .pillFill {
+  animation-play-state: paused;
+}
+
+@keyframes pillProgress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .heroTitle {
+    cursor: pointer;
+  }
+
+  .primaryButton:hover:not(:disabled) {
+    border-color: #e9e9e9;
+    background-color: #e9e9e9;
+  }
+
+  .primaryButton.inListBtn:hover:not(:disabled) {
+    border-color: rgba(var(--accent-rgb), 0.9);
+    background-color: rgba(28, 28, 28, 0.92);
+    color: #e2fff6;
+  }
+
+  .secondaryButton:hover {
+    border-color: rgba(255, 255, 255, 0.32);
+    background-color: rgba(255, 255, 255, 0.22);
+  }
+
+  .indicators:hover {
+    border-color: rgba(var(--accent-rgb), 0.22);
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  .indicator:hover .pill {
+    background-color: rgba(255, 255, 255, 0.8);
+  }
+
+  .indicator[data-active]:hover .pill {
+    background-color: rgba(255, 255, 255, 0.42);
+  }
+}
+
+/* ---- Tablet ----------------------------------------------------------------- */
 
 @media (max-width: 1080px) {
-  .heroGallery {
-    height: 100vh;
-  }
   .overlay {
-    background: linear-gradient(
-      to bottom,
-      transparent 0%,
-      rgba(10, 25, 47, 0.4) 50%,
-      var(--bg-color) 100%
-    );
+    background:
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 20%),
+      linear-gradient(to top, var(--bg-color) 0%, rgba(0, 0, 0, 0.82) 22%, rgba(0, 0, 0, 0.35) 52%, rgba(0, 0, 0, 0) 78%);
   }
+
   .heroContentWrapper {
-    padding: 0 20px;
+    align-items: flex-end;
+    padding: 0 var(--gutter) 112px;
   }
+
   .heroContent {
-    max-width: 100%;
-    margin-top: 150px;
+    max-width: 680px;
   }
+
   .indicators {
-    right: 40px;
-    left: auto;
+    right: var(--gutter);
+    bottom: 40px;
   }
 }
+
+/* ---- Phones ----------------------------------------------------------------- */
 
 @media (max-width: 768px) {
   .heroGallery {
-    height: 100svh;
-    min-height: 560px;
+    height: 78vh;
+    height: min(78svh, 680px);
+    min-height: 460px;
+  }
+
+  .overlay {
+    background:
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 22%),
+      linear-gradient(
+        to top,
+        var(--bg-color) 0%,
+        rgba(0, 0, 0, 0.9) 18%,
+        rgba(0, 0, 0, 0.62) 40%,
+        rgba(0, 0, 0, 0.16) 62%,
+        rgba(0, 0, 0, 0) 76%
+      );
   }
 
   .heroContentWrapper {
-    padding: 0 16px;
-  }
-
-  .indicators {
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: 30px;
-    right: auto;
-    gap: 14px;
-    padding: 10px 16px;
-  }
-
-  .heroTitle {
-    font-size: 40px;
-  }
-
-  .heroDescription {
-    font-size: 15px;
-    margin-bottom: 24px;
-    line-clamp: 4;
-    -webkit-line-clamp: 4;
+    padding: 0 calc(var(--gutter) + var(--safe-right)) 50px calc(var(--gutter) + var(--safe-left));
   }
 
   .heroContent {
-    margin-top: 100px;
+    max-width: 100%;
   }
 
-  .primaryButton {
-    min-width: 0;
-    height: 42px;
-    padding: 0 13px;
-    font-size: 13px;
-  }
-}
-
-@media (max-width: 480px) {
-  .heroGallery {
-    min-height: 520px;
+  .eyebrow {
+    gap: 9px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
 
-  .heroContent {
-    margin-top: 84px;
+  .eyebrowMeta {
+    gap: 6px;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    text-transform: none;
+  }
+
+  .eyebrowMeta::before {
+    width: 12px;
+    margin-right: 3px;
+  }
+
+  .eyebrowMeta > span + span::before {
+    margin-right: 6px;
   }
 
   .heroTitle {
-    font-size: 30px;
-    margin: 10px 0 14px;
+    margin-bottom: 10px;
+    font-size: 36px;
+    line-height: 1.04;
+    letter-spacing: -0.025em;
+  }
+
+  .heroTitle[data-size='medium'] {
+    font-size: 32px;
+  }
+
+  .heroTitle[data-size='long'] {
+    font-size: 28px;
+    line-height: 1.08;
   }
 
   .heroDescription {
-    font-size: 14px;
-    line-height: 1.5;
     margin-bottom: 18px;
+    font-size: 15px;
+    line-height: 1.45;
+    color: rgba(204, 214, 246, 0.8);
   }
 
   .heroButtons {
-    width: auto;
+    flex-wrap: nowrap;
     gap: 10px;
   }
 
-  .primaryButton {
-    width: auto;
-    min-width: 128px;
-    justify-content: center;
+  .primaryButton,
+  .secondaryButton {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 200px;
+    height: 46px;
+    padding: 0 16px;
+    gap: 8px;
+    font-size: 15px;
+    border-radius: var(--radius-sm);
+  }
+
+  .heroButtons > :only-child {
+    flex: 0 0 auto;
+    padding: 0 22px;
+  }
+
+  .buttonIcon {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Bare pills centered under the content; each target is 44px tall. */
+  .indicators {
+    left: 50%;
+    right: auto;
+    bottom: 2px;
+    padding: 0;
+    border: 0;
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
+    transform: translateX(-50%);
+  }
+
+  .indicator {
+    height: 44px;
+    padding: 0 6px;
+  }
+
+  .pill {
+    width: 6px;
+    height: 6px;
+    background-color: rgba(255, 255, 255, 0.38);
+  }
+
+  .indicator[data-active] .pill {
+    width: 24px;
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+}
+
+@media (max-width: 380px) {
+  .heroTitle {
+    font-size: 32px;
+  }
+
+  .heroTitle[data-size='medium'] {
+    font-size: 29px;
+  }
+
+  .heroTitle[data-size='long'] {
+    font-size: 26px;
+  }
+}
+
+/* Phones in landscape: the hero is the whole (short) screen. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .heroGallery {
+    height: 100vh;
+    height: 100svh;
+    min-height: 320px;
+  }
+
+  .heroContentWrapper {
+    align-items: flex-end;
+    padding: 0 calc(var(--gutter) + var(--safe-right)) 44px calc(var(--gutter) + var(--safe-left));
+  }
+
+  .heroContent {
+    max-width: min(560px, 60%);
+  }
+
+  .heroTitle,
+  .heroTitle[data-size='medium'],
+  .heroTitle[data-size='long'] {
+    margin-bottom: 8px;
+    font-size: 28px;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .heroDescription {
+    margin-bottom: 14px;
+    font-size: 14px;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    height: 44px;
   }
 
   .indicators {
-    bottom: 20px;
-    gap: 12px;
-    padding: 8px 14px;
+    right: calc(var(--gutter) + var(--safe-right));
+    bottom: 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroSlide .media {
+    animation: none !important;
   }
 }

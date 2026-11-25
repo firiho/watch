@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Inter, Fira_Code } from "next/font/google";
@@ -7,6 +7,7 @@ import Navbar from "@/components/navbar/navbar";
 import Footer from "@/components/footer/footer";
 import SideLines from "@/components/side-lines/side-lines";
 import Intro from "@/components/intro/intro";
+import MobileTabBar from "@/components/mobile-tab-bar/mobile-tab-bar";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -21,6 +22,15 @@ const firaCode = Fira_Code({
 export const metadata: Metadata = {
   title: "Watch",
   description: "Discover and manage your movie watching addiction, built by Flambeau Iriho.",
+  applicationName: "Watch",
+  appleWebApp: {
+    capable: true,
+    title: "Watch",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: [
       { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
@@ -34,11 +44,19 @@ export const metadata: Metadata = {
       {
         rel: 'mask-icon',
         url: '/safari-pinned-tab.svg',
-        color: '#5bbad5',
+        color: '#64ffda',
       },
     ],
   },
   manifest: '/site.webmanifest',
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#000000",
+  colorScheme: "dark",
 };
 
 import { AuthProvider } from "@/context/auth-context";
@@ -59,7 +77,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${firaCode.variable}`} suppressHydrationWarning>        <AuthProvider>
+      <body className={`${inter.variable} ${firaCode.variable}`} suppressHydrationWarning>
+        <AuthProvider>
           <ProfileProvider>
           <RecommendationsProvider>
           <WatchlistProvider>
@@ -72,7 +91,17 @@ export default function RootLayout({
                 <MovieModal />
                 <InboxPopup />
                 <Footer />
-                <Toaster theme="dark" position="bottom-center" richColors />
+                <MobileTabBar />
+                <Toaster
+                  theme="dark"
+                  position="bottom-center"
+                  richColors
+                  gap={10}
+                  visibleToasts={3}
+                  offset={{ bottom: 24 }}
+                  mobileOffset={{ bottom: 'calc(var(--tabbar-offset) + 12px)', left: 12, right: 12 }}
+                  swipeDirections={['bottom', 'left', 'right']}
+                />
               </ModalProvider>
             </ReminderProvider>
           </WatchlistProvider>

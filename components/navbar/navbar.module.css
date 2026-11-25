@@ -1,266 +1,300 @@
+/*
+ * Top bar. Transparent over the page at scroll 0 (with a soft scrim so the
+ * brand and controls stay legible over bright hero art), turning into glass as
+ * you scroll. --nav-opacity / --nav-blur / --nav-sat are written by navbar.tsx.
+ */
 .header {
+  --p: var(--nav-opacity, 0);
+
   position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 11;
-  width: 100%;
-  height: 70px; /* More compact header height */
-  display: flex;
-  align-items: center;
-  transition: background-color 0.3s ease;
-  background-color: rgba(0, 0, 0, var(--nav-opacity, 0));
-  backdrop-filter: blur(var(--nav-blur, 0px));
-  -webkit-backdrop-filter: blur(var(--nav-blur, 0px));
-  border-bottom: 1px solid rgba(255, 255, 255, calc(var(--nav-opacity, 0) * 0.1));
+  height: calc(var(--nav-h) + var(--safe-top));
+  padding-top: var(--safe-top);
+  background-color: rgba(10, 10, 12, calc(var(--p) * 0.84));
+  -webkit-backdrop-filter: saturate(var(--nav-sat, 100%)) blur(var(--nav-blur, 0px));
+  backdrop-filter: saturate(var(--nav-sat, 100%)) blur(var(--nav-blur, 0px));
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, calc(var(--p) * 0.08));
 }
 
-.nav {
+/* Legibility scrim: strongest at scroll 0, gone once the glass takes over. */
+.header::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 -40px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.18) 55%, rgba(0, 0, 0, 0) 100%);
+  opacity: calc(1 - var(--p));
+}
+
+.inner {
+  height: var(--nav-h);
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  padding: 0 40px;
-  position: relative;
+  gap: 16px;
+  padding: 0 max(40px, var(--safe-right)) 0 max(40px, var(--safe-left));
 }
 
-@media (max-width: 1080px) {
-  .nav {
-    padding: 0 40px;
-  }
-}
+/* ---------------------------------------------------------------- Brand */
 
-@media (max-width: 768px) {
-  .nav {
-    padding: 0 25px;
-  }
-}
-
-.logoContainer {
-  display: flex;
-  align-items: center;
-}
-
-.logoLink {
-  display: flex;
+.brand {
+  display: inline-flex;
   align-items: center;
   gap: 10px;
+  flex: none;
+  border-radius: var(--radius-sm);
   text-decoration: none;
+  -webkit-touch-callout: none;
+  transition: transform var(--dur-fast) var(--ease-out);
 }
 
-.logoLink:hover {
-  text-decoration: none;
-}
-
-.logoText {
+.wordmark {
   font-size: 24px;
   font-weight: 700;
   color: var(--text-white);
   letter-spacing: -0.5px;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, calc((1 - var(--p)) * 0.35));
 }
 
-.links {
+/* -------------------------------------------------------------- Actions */
+
+.actions {
   display: flex;
   align-items: center;
+  min-width: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+
+.actions[data-ready] {
+  opacity: 1;
+  visibility: visible;
 }
 
 .links ol {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   list-style: none;
 }
 
 .links li {
   margin: 0 15px;
-  position: relative;
   font-family: var(--font-mono);
   font-size: 13px;
 }
 
-.links li a {
+.link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1ch;
   padding: 10px;
   color: var(--text-primary);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease-out);
 }
 
-.links li a:hover {
+.linkLabel {
+  position: relative;
+}
+
+/* Underline draws in from the left on hover and retracts to the right. */
+.linkLabel::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  height: 1px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.link[aria-current='page'] {
   color: var(--accent-color);
 }
 
-.buttonContainer {
+.link[aria-current='page'] .linkLabel::after,
+.link:focus-visible .linkLabel::after {
+  transform: scaleX(1);
+}
+
+.link:focus-visible {
+  color: var(--accent-color);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .link:hover {
+    color: var(--accent-color);
+  }
+
+  .link:hover .linkLabel::after {
+    transform: scaleX(1);
+    transform-origin: left center;
+  }
+}
+
+.account {
+  display: flex;
+  align-items: center;
   margin-left: 15px;
 }
 
-.menuButton {
-  display: none;
-  width: 42px;
-  height: 42px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.45);
+.signIn {
+  position: relative;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  gap: 5px;
-  padding: 0;
-  z-index: 13;
-}
-
-.menuBar {
-  width: 18px;
-  height: 1.5px;
-  background: var(--text-primary);
-  transition: transform 0.2s ease, opacity 0.2s ease;
-}
-
-.menuButtonOpen .menuBar:nth-child(1) {
-  transform: translateY(6.5px) rotate(45deg);
-}
-
-.menuButtonOpen .menuBar:nth-child(2) {
-  opacity: 0;
-}
-
-.menuButtonOpen .menuBar:nth-child(3) {
-  transform: translateY(-6.5px) rotate(-45deg);
-}
-
-.mobileBackdrop {
-  display: none;
-}
-
-.mobileMenu {
-  display: none;
-}
-
-.resumeButton {
+  margin-left: 15px;
+  padding: 0.75rem 1.25rem;
   color: var(--accent-color);
   background-color: transparent;
   border: 1px solid var(--accent-color);
   border-radius: var(--border-radius);
-  padding: 0.75rem 1.25rem;
-  font-size: 13px;
   font-family: var(--font-mono);
+  font-size: 13px;
   line-height: 1;
+  white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
-  transition: var(--transition);
-  margin-left: 15px;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
-.resumeButton:hover {
-  background-color: var(--accent-color-hover);
+.signIn:active {
+  transform: scale(var(--press-scale));
+  transition-duration: var(--dur-instant);
 }
+
+@media (hover: hover) and (pointer: fine) {
+  .signIn:hover {
+    background-color: var(--accent-color-hover);
+    box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.06);
+  }
+}
+
+/* ------------------------------------------------------------- Tablet */
+
+/* Tighten the desktop nav so four links + search + avatar fit down to 769px
+   (iPad portrait), without changing its look. */
+@media (max-width: 1080px) {
+  .inner {
+    padding: 0 max(var(--gutter), var(--safe-right)) 0 max(var(--gutter), var(--safe-left));
+  }
+
+  .links li {
+    margin: 0 6px;
+  }
+
+  .link {
+    padding: 10px 6px;
+  }
+
+  .account,
+  .signIn {
+    margin-left: 10px;
+  }
+}
+
+@media (max-width: 900px) {
+  .links li {
+    margin: 0 3px;
+  }
+
+  .link {
+    padding: 10px 5px;
+  }
+}
+
+/* ------------------------------------------------------------- Mobile */
 
 @media (max-width: 768px) {
+  .header::before {
+    inset: 0 0 -32px;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.56) 0%, rgba(0, 0, 0, 0.3) 52%, rgba(0, 0, 0, 0) 100%);
+  }
+
+  .inner {
+    gap: 12px;
+    /* Right side is optically inset: the 44px controls carry their own air. */
+    padding: 0 max(calc(var(--gutter) - 6px), var(--safe-right)) 0 max(var(--gutter), var(--safe-left));
+  }
+
+  .brand {
+    --logo-w: 30px;
+    --logo-h: 34px;
+    gap: 9px;
+    padding: 5px 4px 5px 0;
+  }
+
+  .brand:active {
+    transform: scale(0.96);
+    transition-duration: var(--dur-instant);
+  }
+
+  .wordmark {
+    font-size: 20px;
+    letter-spacing: -0.4px;
+  }
+
   .links {
     display: none;
   }
 
-  .logoText {
-    font-size: 20px;
+  .actions {
+    gap: 2px;
   }
 
-  .menuButton {
-    display: inline-flex;
-  }
-
-  .mobileBackdrop {
-    display: block;
-    position: fixed;
-    inset: 70px 0 0 0;
-    border: 0;
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    z-index: 11;
-  }
-
-  .mobileMenu {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    position: fixed;
-    top: 70px;
-    right: 0;
-    width: min(92vw, 380px);
-    max-height: calc(100dvh - 70px);
-    overflow-y: auto;
-    padding: 18px;
-    background: rgba(8, 8, 8, 0.96);
-    border-left: 1px solid rgba(255, 255, 255, 0.08);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    z-index: 12;
-  }
-
-  .mobileLinks {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .mobileLinks a {
-    display: block;
-    padding: 12px 10px;
-    border-radius: 8px;
-    color: var(--text-primary);
-    font-family: var(--font-mono);
-    font-size: 14px;
-    border: 1px solid transparent;
-  }
-
-  .mobileLinks a:hover {
-    color: var(--accent-color);
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.06);
-  }
-
-  .mobileSearch {
-    width: 100%;
-  }
-
-  .mobileActions {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    align-items: stretch;
-  }
-
-  .mobileIdentity {
-    font-size: 14px;
-    font-weight: 700;
-    color: #fff;
-    text-align: center;
-    padding: 8px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .mobileActions .resumeButton {
+  .account {
     margin-left: 0;
-    width: 100%;
-    text-align: center;
-    justify-content: center;
+  }
+
+  /* "Sign In" becomes a tinted capsule (dark base keeps it legible over art). */
+  .signIn {
+    height: 34px;
+    margin-left: 4px;
+    margin-right: 6px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background:
+      linear-gradient(rgba(var(--accent-rgb), 0.16), rgba(var(--accent-rgb), 0.16)),
+      rgba(12, 12, 14, 0.55);
+    box-shadow: inset 0 0 0 0.5px rgba(var(--accent-rgb), 0.4);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /* 44px hit area around the 34px capsule. */
+  .signIn::before {
+    content: '';
+    position: absolute;
+    inset: -5px -4px;
+  }
+
+  .signIn:active {
+    transform: scale(0.95);
   }
 }
 
-@media (max-width: 420px) {
-  .nav {
-    padding: 0 16px;
-  }
-
-  .logoText {
+@media (max-width: 360px) {
+  .wordmark {
     font-size: 18px;
   }
 
-  .logoLink {
+  .brand {
     gap: 8px;
-  }
-
-  .mobileMenu {
-    width: 100%;
-    padding: 16px;
-    border-left: 0;
   }
 }

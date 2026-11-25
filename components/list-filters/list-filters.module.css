@@ -1,97 +1,300 @@
 .bar {
+  --ctl-h: 34px;
+  --tone-rgb: 251, 191, 36; /* matches StarRating's gold */
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px 16px;
+  gap: 10px 12px;
+}
+
+.toneAccent {
+  --tone-rgb: var(--accent-rgb);
+}
+
+/* ---- Segmented control ----------------------------------------------------- */
+
+.segmented {
+  --seg-radius: 10px;
+  position: relative;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr; /* equal segments, as wide as the widest label */
+  height: var(--ctl-h);
+  padding: 2px;
+  border-radius: var(--seg-radius);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  isolation: isolate;
+}
+
+/* The selected "thumb": one segment wide, moved with transform only. */
+.indicator {
+  position: absolute;
+  z-index: -1;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc((100% - 4px) / var(--segment-count, 3));
+  border-radius: calc(var(--seg-radius) - 2px);
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+  transform: translateX(calc(var(--segment-index, 0) * 100%));
+  transition: transform var(--dur-slow) var(--ease-ios);
+}
+
+/* Pressing the selected segment squeezes the thumb, like UISegmentedControl. */
+.segmented:has(.selected:active) .indicator {
+  transform: translateX(calc(var(--segment-index, 0) * 100%)) scale(0.95);
+  transition-duration: var(--dur-fast);
+}
+
+.segment {
+  position: relative;
+  min-width: 64px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: calc(var(--seg-radius) - 2px);
+  background: none;
   font-family: var(--font-mono);
   font-size: 12px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
 }
 
-.tabs {
+.segment.selected {
+  color: var(--text-white);
+}
+
+.segment:not(.selected):active {
+  opacity: 0.5;
+  transition-duration: var(--dur-instant);
+}
+
+/* ---- Toggles: stars, Unrated, reminders ------------------------------------ */
+
+.toggles {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.starGroup {
   display: inline-flex;
   align-items: center;
-  gap: 14px;
+  height: var(--ctl-h);
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
 }
 
-.tab {
+.starGroupActive {
+  background: rgba(var(--tone-rgb), 0.08);
+  box-shadow: inset 0 0 0 1px rgba(var(--tone-rgb), 0.32);
+}
+
+/* Empty stars a touch brighter than on cards, so they read as a control.
+   Scoped under .bar so these stay ahead of StarRating's own size and touch
+   rules (which shrink the row with negative margins). StarRating handles the
+   press/hover feedback on its glyphs. */
+.bar .starGroup .starFilter {
+  --star-size: 15px;
+  --star-empty: rgba(255, 255, 255, 0.34);
+  gap: 0;
+  margin: 0;
+}
+
+.bar .starGroup .starFilter button {
   position: relative;
-  background: none;
-  border: none;
-  padding: 4px 0;
-  font: inherit;
-  letter-spacing: 0.3px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: color 0.2s ease;
+  width: auto;
+  height: var(--ctl-h);
+  padding: 0 5px;
 }
 
-.tab:hover,
-.tab.active {
-  color: var(--text-white);
-}
-
-.tab.active::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 1px;
-  background: var(--accent-color);
-}
-
-.sep {
-  width: 1px;
-  height: 14px;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.ratingGroup {
+.pill {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-}
-
-/* Empty stars a touch brighter than on cards, so they read as a control */
-.starFilter {
-  --star-empty: rgba(255, 255, 255, 0.38);
-}
-
-.iconToggle {
-  background: none;
-  border: none;
-  padding: 4px;
-  display: inline-flex;
+  justify-content: center;
+  gap: 6px;
+  height: var(--ctl-h);
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px var(--hairline);
   color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
 }
 
-.iconToggle:hover {
-  color: var(--text-white);
+.iconPill {
+  width: var(--ctl-h);
+  padding: 0;
 }
 
-.iconToggle.active {
+.pill:active {
+  transform: scale(var(--press-scale));
+  transition-duration: var(--dur-instant);
+}
+
+.iconPill:active {
+  transform: scale(0.92);
+}
+
+.pillActive {
   color: var(--accent-color);
-  filter: drop-shadow(0 0 5px rgba(100, 255, 218, 0.5));
+  background: rgba(var(--accent-rgb), 0.12);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.4);
 }
 
-.tab:focus-visible,
-.iconToggle:focus-visible {
-  outline: 2px solid var(--accent-color);
-  outline-offset: 2px;
-  border-radius: 2px;
+.iconPill.pillActive svg {
+  filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.55));
 }
+
+/* ---- Count ----------------------------------------------------------------- */
 
 .count {
-  margin-left: auto;
-  color: var(--text-secondary);
-  opacity: 0.7;
+  margin-left: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  color: var(--text-faint);
 }
+
+/* ---- Hover (pointer devices only) ------------------------------------------ */
+
+@media (hover: hover) and (pointer: fine) {
+  .segment:not(.selected):hover {
+    color: var(--text-primary);
+  }
+
+  .starGroup:hover {
+    box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  }
+
+  .starGroupActive:hover {
+    box-shadow: inset 0 0 0 1px rgba(var(--tone-rgb), 0.45);
+  }
+
+  .pill:hover {
+    color: var(--text-white);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .pillActive:hover {
+    color: var(--accent-color);
+    background: rgba(var(--accent-rgb), 0.16);
+  }
+}
+
+/* Touch tablets on the desktop layout: 44px targets. */
+@media (pointer: coarse) {
+  .bar {
+    --ctl-h: 40px;
+  }
+}
+
+/* ---- Mobile ---------------------------------------------------------------- */
 
 @media (max-width: 768px) {
   .bar {
+    --ctl-h: 40px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px 16px;
     width: 100%;
+  }
+
+  .segmented {
+    --seg-radius: 12px;
+    grid-column: 1;
+    grid-row: 1;
+    display: grid;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .count {
+    grid-column: 2;
+    grid-row: 1;
+    margin-left: 0;
+  }
+
+  .toggles {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  /* Mobile controls use the system face; mono stays for the count. */
+  .segment {
+    min-width: 0;
+    padding: 0 8px;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  .segment.selected {
+    font-weight: 600;
+  }
+
+  .bar .starGroup .starFilter {
+    --star-size: 18px;
+  }
+
+  .bar .starGroup .starFilter button {
+    padding: 0 9px; /* 36px wide */
+  }
+
+  .pill {
+    padding: 0 16px;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  .iconPill {
+    padding: 0;
+  }
+
+  /* 40px visuals, 44px hit areas */
+  .segment::after,
+  .bar .starGroup .starFilter button::after,
+  .pill::after {
+    content: '';
+    position: absolute;
+    inset: -2px 0;
+  }
+
+  .segment::after {
+    inset: -4px 0;
+  }
+
+  .iconPill::after {
+    inset: -2px;
   }
 }

@@ -1,11 +1,14 @@
+/* Size is overridable by the parent via --logo-w / --logo-h (the mobile top bar
+   uses a compact mark). The intro forces its own size with !important. */
 .logoWrapper {
   position: relative;
-  width: 42px;
-  height: 48px;
-  transition: var(--transition);
+  width: var(--logo-w, 42px);
+  height: var(--logo-h, 48px);
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform var(--dur-base) var(--ease-out);
 }
 
 .hexContainer {
@@ -15,13 +18,13 @@
   width: 100%;
   height: 100%;
   color: var(--accent-color);
-  transition: var(--transition);
+  transition: filter var(--dur-base) var(--ease-out);
 }
 
 .hexContainer polygon {
-  /* Use a solid background color instead of transparent accent-hover */
-  fill: var(--bg-color); 
-  transition: var(--transition);
+  /* Solid fill so the hard offset shadow reads as a shape, not an outline. */
+  fill: var(--bg-color);
+  transition: fill var(--dur-fast) var(--ease-out);
 }
 
 .logoContainer {
@@ -31,27 +34,42 @@
   width: 100%;
   height: 100%;
   color: var(--accent-color);
-  transition: var(--transition);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* 
-  Refined hover effect: 
-  The icon shifts slightly up and left, 
-  and a solid green shadow appears behind it.
+.logoWrapper svg {
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+/*
+  Signature hover (mouse only — never sticks after a tap on touch screens):
+  the mark lifts up-left and a hard accent shadow appears behind it. Also
+  triggered when hovering / keyboard-focusing the surrounding brand link.
 */
-.logoWrapper:hover {
+@media (hover: hover) and (pointer: fine) {
+  .logoWrapper:hover,
+  :global(.logo-link):hover .logoWrapper {
+    transform: translate(-3px, -3px);
+  }
+
+  .logoWrapper:hover .hexContainer,
+  :global(.logo-link):hover .hexContainer {
+    filter: drop-shadow(6px 6px 0 var(--accent-color));
+  }
+
+  .logoWrapper:hover .hexContainer polygon,
+  :global(.logo-link):hover .hexContainer polygon {
+    fill: var(--bg-color-light);
+  }
+}
+
+:global(.logo-link):focus-visible .logoWrapper {
   transform: translate(-3px, -3px);
 }
 
-.logoWrapper:hover .hexContainer {
-  /* Solid green shadow (no blur for that 'hard' effect seen in many portfolio themes) */
-  filter: drop-shadow(6px 6px 0px var(--accent-color));
-}
-
-.logoWrapper:hover .hexContainer polygon {
-  /* Maintain solid background on hover */
-  fill: var(--bg-color-light); 
+:global(.logo-link):focus-visible .hexContainer {
+  filter: drop-shadow(6px 6px 0 var(--accent-color));
 }

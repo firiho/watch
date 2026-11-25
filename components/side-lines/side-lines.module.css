@@ -1,34 +1,44 @@
 .sideLine {
   position: fixed;
   bottom: 0;
-  width: 40px;
   z-index: 10;
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 40px;
+  pointer-events: none;
+  transform-origin: bottom center;
+  animation: lineIn 900ms var(--ease-out) 400ms both;
 }
 
 .leftLine {
-  left: 40px;
+  left: calc(40px + var(--safe-left));
 }
 
 .rightLine {
-  right: 40px;
+  right: calc(40px + var(--safe-right));
 }
 
 .line {
   width: 1px;
   height: 80px;
-  background-color: var(--text-secondary);
-  opacity: 0.5;
+  background: linear-gradient(to bottom, transparent, rgba(136, 146, 176, 0.5) 35%);
+}
+
+@keyframes lineIn {
+  from {
+    opacity: 0;
+    transform: scaleY(0.4);
+  }
 }
 
 @media (max-width: 1080px) {
   .leftLine {
-    left: 20px;
+    left: calc(20px + var(--safe-left));
   }
+
   .rightLine {
-    right: 20px;
+    right: calc(20px + var(--safe-right));
   }
 }
 
