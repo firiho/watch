@@ -17,6 +17,7 @@ import { useEffect } from 'react';
 
 let lockCount = 0;
 let savedScrollY = 0;
+let savedLocation = '';
 let savedStyles: Partial<Record<'position' | 'top' | 'left' | 'right' | 'width' | 'overflow' | 'paddingRight', string>> = {};
 
 export function isScrollLocked(): boolean {
@@ -36,6 +37,7 @@ export function lockBodyScroll(): void {
 
   const { body, documentElement: html } = document;
   savedScrollY = window.scrollY;
+  savedLocation = window.location.pathname + window.location.search;
   const scrollbarWidth = window.innerWidth - html.clientWidth;
 
   savedStyles = {
@@ -76,10 +78,13 @@ export function unlockBodyScroll(): void {
   body.style.overflow = savedStyles.overflow ?? '';
   body.style.paddingRight = savedStyles.paddingRight ?? '';
 
-  // Restore instantly (never smooth-scroll back to where the user already was).
+  // Restore instantly (never smooth-scroll back to where the user already was). If an
+  // overlay navigated while it held the lock (e.g. a link tapped, then its exit animation),
+  // the new page belongs at the top — Next's own scroll-to-top couldn't move a pinned body.
+  const routeChanged = window.location.pathname + window.location.search !== savedLocation;
   const previousBehavior = html.style.scrollBehavior;
   html.style.scrollBehavior = 'auto';
-  window.scrollTo(0, savedScrollY);
+  window.scrollTo(0, routeChanged ? 0 : savedScrollY);
   html.style.scrollBehavior = previousBehavior;
 
   html.style.removeProperty('--scroll-lock-y');

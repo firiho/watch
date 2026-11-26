@@ -60,6 +60,11 @@
   text-shadow: 0 1px 12px rgba(0, 0, 0, calc((1 - var(--p)) * 0.35));
 }
 
+/* Back (pushed screens): phones only, see the mobile block. */
+.back {
+  display: none;
+}
+
 /* -------------------------------------------------------------- Actions */
 
 .actions {
@@ -216,6 +221,34 @@
   }
 }
 
+/* Touch screens on the desktop layout (phones in landscape, tablets): 44px
+   tall hit areas for the links and Sign In, without changing how they look. */
+@media (hover: none) and (pointer: coarse) and (min-width: 769px) {
+  .link {
+    position: relative;
+  }
+
+  .link::before,
+  .signIn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    height: var(--tap);
+    transform: translateY(-50%);
+  }
+
+  .link::before {
+    left: 0;
+    right: 0;
+  }
+
+  /* Sign In has a 1px border, and the pseudo resolves against its padding box. */
+  .signIn::before {
+    left: -1px;
+    right: -1px;
+  }
+}
+
 /* ------------------------------------------------------------- Mobile */
 
 @media (max-width: 768px) {
@@ -226,15 +259,20 @@
 
   .inner {
     gap: 12px;
-    /* Right side is optically inset: the 44px controls carry their own air. */
-    padding: 0 max(calc(var(--gutter) - 6px), var(--safe-right)) 0 max(var(--gutter), var(--safe-left));
+    /* The 44px controls carry 4px of air around their 36px chips: inset the right
+       side by that much so the chips (and Sign In) line up with the gutter. */
+    padding: 0 max(calc(var(--gutter) - 4px), var(--safe-right)) 0 max(var(--gutter), var(--safe-left));
   }
 
+  /* The controls share one visual height (36px: search, bell, avatar, Back, Sign
+     In). The brand is deliberately quieter, so page titles stay the biggest thing
+     on screen: a 26px mark (its box is 84:96) and a title3 wordmark. The link
+     stays 44px tall. */
   .brand {
-    --logo-w: 30px;
-    --logo-h: 34px;
-    gap: 9px;
-    padding: 5px 4px 5px 0;
+    --logo-h: 26px;
+    --logo-w: calc(var(--logo-h) * 0.875);
+    gap: 8px;
+    padding: calc((var(--tap) - var(--logo-h)) / 2) 4px calc((var(--tap) - var(--logo-h)) / 2) 0;
   }
 
   .brand:active {
@@ -243,8 +281,61 @@
   }
 
   .wordmark {
-    font-size: 20px;
-    letter-spacing: -0.4px;
+    font-size: var(--m-text-title3);
+    letter-spacing: -0.02em;
+  }
+
+  /* Pushed screens: an iOS-style Back capsule takes the logo's place. Same dark
+     glass base as the search chip, so it reads over hero art. */
+  .header[data-pushed] .brand {
+    display: none;
+  }
+
+  .back {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex: none;
+    height: var(--m-control-md);
+    padding: 0 14px 0 10px;
+    border-radius: var(--radius-pill);
+    background: rgba(18, 18, 20, 0.42);
+    box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.14);
+    color: var(--text-white);
+    font-family: var(--font-sans);
+    font-size: var(--m-text-control);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1;
+    -webkit-touch-callout: none;
+    transition:
+      transform var(--dur-fast) var(--ease-out),
+      opacity var(--dur-fast) var(--ease-out);
+    animation: backIn var(--dur-base) var(--ease-out) backwards;
+  }
+
+  /* 44px tall hit area that also runs out to the screen edge (no border, so the
+     inset is exact). */
+  .back::before {
+    content: '';
+    position: absolute;
+    top: calc((var(--m-control-md) - var(--tap)) / 2);
+    bottom: calc((var(--m-control-md) - var(--tap)) / 2);
+    left: calc(-1 * max(var(--gutter), var(--safe-left)));
+    right: -6px;
+  }
+
+  .backChevron {
+    flex: none;
+    width: 10px;
+    height: 17px;
+  }
+
+  .back:active {
+    transform: scale(0.95);
+    opacity: 0.7;
+    transition-duration: var(--dur-instant);
   }
 
   .links {
@@ -261,9 +352,9 @@
 
   /* "Sign In" becomes a tinted capsule (dark base keeps it legible over art). */
   .signIn {
-    height: 34px;
+    height: var(--m-control-md);
     margin-left: 4px;
-    margin-right: 6px;
+    margin-right: 4px;
     padding: 0 14px;
     border: 0;
     border-radius: var(--radius-pill);
@@ -272,16 +363,16 @@
       rgba(12, 12, 14, 0.55);
     box-shadow: inset 0 0 0 0.5px rgba(var(--accent-rgb), 0.4);
     font-family: var(--font-sans);
-    font-size: 14px;
+    font-size: var(--m-text-control);
     font-weight: 600;
     letter-spacing: -0.01em;
   }
 
-  /* 44px hit area around the 34px capsule. */
+  /* 44px hit area around the 36px capsule (its border is 0 here, so the inset is exact). */
   .signIn::before {
     content: '';
     position: absolute;
-    inset: -5px -4px;
+    inset: calc((var(--m-control-md) - var(--tap)) / 2) -4px;
   }
 
   .signIn:active {
@@ -289,12 +380,10 @@
   }
 }
 
-@media (max-width: 360px) {
-  .wordmark {
-    font-size: 18px;
-  }
-
-  .brand {
-    gap: 8px;
+/* Back arrives the way iOS slides it in: a short fade from the right. */
+@keyframes backIn {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
   }
 }

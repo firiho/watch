@@ -1,0 +1,403 @@
+/* Bell + Notifications sheet (notifications-bell.tsx). Phones only: the desktop
+   layout keeps the floating reminder stack (inbox-popup.module.css). The sheet
+   chrome (backdrop, grabber, close button, drag to dismiss) is SheetDialog's. */
+
+.bell {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* ------------------------------------------------------------ Bell */
+
+  /* A 44px button around a 36px dark-glass chip: built like the search chip
+     beside it, so the two read as a pair over hero art. */
+  .bell {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: var(--tap);
+    height: var(--tap);
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-white);
+    -webkit-touch-callout: none;
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+
+  .bell::before {
+    content: '';
+    position: absolute;
+    inset: calc((var(--tap) - var(--m-icon-btn)) / 2);
+    border-radius: 50%;
+    background: rgba(18, 18, 20, 0.42);
+    box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.14);
+  }
+
+  .bell:active {
+    transform: scale(0.9);
+    transition-duration: var(--dur-instant);
+  }
+
+  .glyph {
+    position: relative;
+    width: 19px;
+    height: 19px;
+    /* Swings from the top, like a bell (the wiggle on a new item). */
+    transform-origin: 50% 12%;
+  }
+
+  /* Unread count on the chip's top-right edge, inside the 44px box so it never
+     reaches the avatar's target. */
+  .badge {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: var(--radius-pill);
+    background: var(--accent-color);
+    color: var(--accent-ink);
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6);
+    font-size: var(--m-text-caption);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 18px;
+    letter-spacing: -0.01em;
+    text-align: center;
+    pointer-events: none;
+    animation: badgeIn var(--dur-base) var(--ease-spring) backwards;
+  }
+
+  /* ----------------------------------------------------------- Sheet */
+
+  .panel {
+    --sheet-max-w: 440px;
+    --sheet-h-mobile: auto;
+  }
+
+  /* Title row, centred on SheetDialog's close button (top: 14px, --m-icon-btn tall). */
+  .header {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(2 * 14px + var(--m-icon-btn));
+    padding: 0 60px;
+  }
+
+  .heading {
+    margin: 0;
+    font-size: var(--m-text-headline);
+    font-weight: 600; /* same as the other sheet titles (episode picker, Telegram setup) */
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--text-white);
+    white-space: nowrap;
+  }
+
+  .heading:focus {
+    outline: none;
+  }
+
+  .scroller {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 4px var(--gutter) calc(6px + var(--safe-bottom));
+  }
+
+  .list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Each row collapses through a 1fr → 0fr grid track when it leaves. The column
+     is minmax(0, 1fr): an auto track would grow to the one-line title's full width
+     and push the card past the screen on narrow phones. */
+  .row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 1fr;
+  }
+
+  .rowClip {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .card {
+    position: relative;
+    margin-bottom: 10px;
+    padding: 14px 14px 14px 16px;
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.045);
+    box-shadow: inset 0 0 0 0.5px var(--hairline-strong);
+  }
+
+  .text {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-width: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+
+  /* Text buttons dim while pressed, like iOS. */
+  .text:has(.title:active) {
+    opacity: 0.6;
+    transition-duration: var(--dur-instant);
+  }
+
+  .kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-mono);
+    font-size: var(--m-text-caption2);
+    line-height: 1.3;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent-color);
+  }
+
+  .dot {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-color);
+  }
+
+  .title {
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    font-size: var(--m-text-headline);
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    text-align: left;
+    color: var(--text-white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -webkit-touch-callout: none;
+  }
+
+  /* The title's target covers the card above the buttons (kicker, title and
+     body, padding included). Its containing block is .text, so the title's own
+     overflow doesn't clip it; it stops 6px above the buttons' hit areas. */
+  .title::after {
+    content: '';
+    position: absolute;
+    inset: -14px -14px -2px -16px;
+  }
+
+  .body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    margin: 2px 0 0;
+    font-size: var(--m-text-subhead);
+    line-height: 1.4;
+    color: var(--text-muted);
+  }
+
+  .episode {
+    flex: none;
+    padding: 2px 7px;
+    border-radius: var(--radius-xs);
+    background: rgba(var(--accent-rgb), 0.14);
+    box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.42);
+    font-family: var(--font-mono);
+    font-size: var(--m-text-caption);
+    font-weight: 600;
+    line-height: 1.3;
+    color: #d8fff5;
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .action {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    height: var(--m-control-md);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: var(--m-radius-control);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 0 0 0.5px var(--hairline-strong);
+    color: var(--text-white);
+    font-size: var(--m-text-control);
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    -webkit-touch-callout: none;
+    transition:
+      background-color var(--dur-fast) var(--ease-out),
+      opacity var(--dur-fast) var(--ease-out),
+      transform var(--dur-fast) var(--ease-out);
+  }
+
+  /* 44px tall target on the 36px button (no border, so the inset is exact). */
+  .action::before {
+    content: '';
+    position: absolute;
+    inset: calc((var(--m-control-md) - var(--tap)) / 2) 0;
+  }
+
+  .action:active:not(:disabled) {
+    transform: scale(var(--press-scale));
+    transition-duration: var(--dur-instant);
+  }
+
+  .action:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  .primary {
+    background: var(--accent-color);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    color: var(--accent-ink);
+  }
+
+  /* Acted on: the card slides off and fades, then the gap closes. */
+  .rowLeaving {
+    pointer-events: none;
+    animation: rowCollapse 260ms var(--ease-in-out) 100ms forwards;
+  }
+
+  .rowLeaving .rowClip {
+    overflow: hidden;
+  }
+
+  .rowLeaving .card {
+    animation: rowFade 200ms var(--ease-in) forwards;
+  }
+
+  /* Arrived while the sheet is open: the gap opens, then the card fades in. */
+  .rowEntering {
+    animation: rowExpand var(--dur-base) var(--ease-out) backwards;
+  }
+
+  .rowEntering .rowClip {
+    overflow: hidden;
+  }
+
+  .rowEntering .card {
+    animation: rowAppear var(--dur-base) var(--ease-out) 120ms backwards;
+  }
+
+  .empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 16px 22px;
+    text-align: center;
+    animation: emptyIn var(--dur-slow) var(--ease-out) backwards;
+  }
+
+  .emptyIcon {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 8px;
+    border-radius: 50%;
+    background: rgba(var(--accent-rgb), 0.12);
+    box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.3);
+    color: var(--accent-color);
+  }
+
+  .emptyIcon svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .emptyTitle {
+    margin: 0;
+    font-size: var(--m-text-headline);
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text-white);
+  }
+
+  .emptyText {
+    max-width: 280px;
+    margin: 0;
+    font-size: var(--m-text-subhead);
+    line-height: 1.45;
+    color: var(--text-muted);
+  }
+
+  .loading {
+    margin: 0;
+    padding: 20px 16px 28px;
+    font-size: var(--m-text-subhead);
+    text-align: center;
+    color: var(--text-muted);
+  }
+}
+
+@keyframes badgeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+@keyframes rowCollapse {
+  to {
+    grid-template-rows: 0fr;
+  }
+}
+
+@keyframes rowFade {
+  to {
+    opacity: 0;
+    transform: translate3d(-28px, 0, 0) scale(0.98);
+  }
+}
+
+@keyframes rowExpand {
+  from {
+    grid-template-rows: 0fr;
+  }
+}
+
+@keyframes rowAppear {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.98);
+  }
+}
+
+@keyframes emptyIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+}

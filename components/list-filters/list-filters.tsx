@@ -121,34 +121,39 @@ const ListFilters = ({
           />
         </div>
 
-        {showUnrated && (
-          <button
-            type="button"
-            className={`${styles.pill} ${rating === 'unrated' ? styles.pillActive : ''}`}
-            aria-pressed={rating === 'unrated'}
-            onClick={() => {
-              haptic('selection');
-              onRatingChange(rating === 'unrated' ? null : 'unrated');
-            }}
-          >
-            Unrated
-          </button>
-        )}
+        {/* Kept together so a narrow phone wraps them as a pair (never the bell alone). */}
+        {(showUnrated || onRemindersOnlyChange) && (
+          <div className={styles.extras}>
+            {showUnrated && (
+              <button
+                type="button"
+                className={`${styles.pill} ${rating === 'unrated' ? styles.pillActive : ''}`}
+                aria-pressed={rating === 'unrated'}
+                onClick={() => {
+                  haptic('selection');
+                  onRatingChange(rating === 'unrated' ? null : 'unrated');
+                }}
+              >
+                Unrated
+              </button>
+            )}
 
-        {onRemindersOnlyChange && (
-          <button
-            type="button"
-            className={`${styles.pill} ${styles.iconPill} ${remindersOnly ? styles.pillActive : ''}`}
-            onClick={() => {
-              haptic('selection');
-              onRemindersOnlyChange(!remindersOnly);
-            }}
-            aria-pressed={Boolean(remindersOnly)}
-            aria-label="Only titles with reminders"
-            title={remindersOnly ? 'Show all titles' : 'Only titles with reminders'}
-          >
-            <BellIcon />
-          </button>
+            {onRemindersOnlyChange && (
+              <button
+                type="button"
+                className={`${styles.pill} ${styles.iconPill} ${remindersOnly ? styles.pillActive : ''}`}
+                onClick={() => {
+                  haptic('selection');
+                  onRemindersOnlyChange(!remindersOnly);
+                }}
+                aria-pressed={Boolean(remindersOnly)}
+                aria-label="Only titles with reminders"
+                title={remindersOnly ? 'Show all titles' : 'Only titles with reminders'}
+              >
+                <BellIcon />
+              </button>
+            )}
+          </div>
         )}
       </div>
 

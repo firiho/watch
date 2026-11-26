@@ -128,4 +128,8 @@
     padding-top: 24px;
     padding-bottom: calc(22px + max(0px, var(--safe-bottom) - var(--tabbar-offset)));
   }
+
+  .credit {
+    font-size: var(--m-text-caption);
+  }
 }

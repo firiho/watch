@@ -38,7 +38,8 @@ export const metadata: Metadata = {
       { url: '/favicon.ico' },
     ],
     apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+      // ?v=2: the icon was replaced (opaque, full-bleed); iOS caches the old one by URL.
+      { url: '/apple-touch-icon.png?v=2', sizes: '180x180', type: 'image/png' },
     ],
     other: [
       {
@@ -98,7 +99,7 @@ export default function RootLayout({
                   richColors
                   gap={10}
                   visibleToasts={3}
-                  offset={{ bottom: 24 }}
+                  offset={{ bottom: 'calc(var(--tabbar-offset) + 24px)' }}
                   mobileOffset={{ bottom: 'calc(var(--tabbar-offset) + 12px)', left: 12, right: 12 }}
                   swipeDirections={['bottom', 'left', 'right']}
                 />

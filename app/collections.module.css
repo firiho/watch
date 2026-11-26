@@ -349,25 +349,29 @@
     padding-bottom: 40px;
   }
 
-  /* iOS large-title rhythm: title, one-line gap, description, controls. */
+  /* iOS large-title rhythm: title, a short gap, description, controls. Sizes come
+     from the mobile scale in globals.css. */
   .discoverHeader {
-    gap: 18px;
+    gap: 16px;
     margin-bottom: 20px;
     padding-bottom: 0;
     border-bottom: 0;
   }
 
+  /* Page titles stay the biggest, heaviest text on screen: 800 here is a deliberate
+     exception to the scale's 700 title weight. */
   .title {
     margin-bottom: 8px;
-    font-size: 34px;
+    font-size: var(--m-text-large-title);
+    font-weight: var(--m-weight-large-title);
     line-height: 1.08;
     letter-spacing: -0.025em;
   }
 
   .description {
     max-width: 36em;
-    font-size: 15px;
-    line-height: 1.5;
+    font-size: var(--m-text-body);
+    line-height: 1.45;
   }
 
   .searchField {
@@ -382,14 +386,17 @@
 
   .resultsMeta {
     gap: 12px;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
+    font-size: var(--m-text-caption);
   }
 
+  /* DiscoverGrid's title is a bare text node, so it takes the title size from here. */
   .emptyState,
   .noResults {
     min-height: 44vh;
     padding: 40px 8px;
-    font-size: 17px;
+    font-size: var(--m-text-title3);
+    font-weight: var(--m-weight-title);
   }
 
   .emptyIcon,
@@ -407,7 +414,49 @@
   }
 
   .emptyTitle {
-    font-size: 19px;
+    font-size: var(--m-text-title3);
+  }
+
+  .emptyText,
+  .noResultsText {
+    font-size: var(--m-text-body);
+    line-height: 1.45;
+  }
+
+  /* Secondary actions (Clear filters, Browse movies…) are 36px pills; the sign-in
+     gate's primary button is the full 44px. Labels switch to the system face, like the
+     other mobile controls. */
+  .emptyAction {
+    position: relative;
+    min-height: var(--m-control-md);
+    margin-top: 20px;
+    padding: 0 18px;
+    font-family: var(--font-sans);
+    font-size: var(--m-text-control);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .emptyActionPrimary {
+    min-height: var(--m-control-lg);
+    padding: 0 22px;
+  }
+
+  /* 44px-tall target whatever the visual height. Centered and sized on its own, since
+     an inset would resolve against the padding box inside the 1px border. */
+  .emptyAction::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: calc(100% + 2px);
+    height: var(--tap);
+    translate: -50% -50%;
+  }
+
+  .emptyAction svg {
+    width: 14px;
+    height: 14px;
   }
 }
 

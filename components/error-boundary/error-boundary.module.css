@@ -156,6 +156,32 @@
     padding: 30px 22px 22px;
     border-radius: 26px;
   }
+
+  .eyebrow {
+    font-size: var(--m-text-caption2);
+    letter-spacing: 0.06em;
+  }
+
+  /* Status-screen title: the same size as the sign-in gates' and the 404's. */
+  .title {
+    font-size: var(--m-text-title3);
+    font-weight: var(--m-weight-title);
+  }
+
+  .text {
+    font-size: var(--m-text-body);
+    line-height: 1.45;
+  }
+
+  /* Reload and Go home sit side by side as one pair, so both take the primary height. Labels
+     switch to the system face, like the app's other mobile controls. */
+  .button,
+  .secondary {
+    min-height: var(--m-control-lg);
+    font-family: var(--font-sans);
+    font-size: var(--m-text-control);
+    letter-spacing: -0.01em;
+  }
 }
 
 /* ---- 404 — the projector still from /auth, a soft beam, a flickering "404" ---- */
@@ -410,12 +436,20 @@
 
   .nfEyebrow {
     margin-bottom: 14px;
-    font-size: 11px;
+    font-size: var(--m-text-caption2);
+  }
+
+  /* Status-screen title: the same size as the sign-in gates' and the error card's. */
+  .nfTitle {
+    margin-bottom: 8px;
+    font-size: var(--m-text-title3);
+    font-weight: var(--m-weight-title);
   }
 
   .nfText {
-    font-size: 15px;
-    margin-bottom: 28px;
+    margin-bottom: 24px;
+    font-size: var(--m-text-body);
+    line-height: 1.45;
   }
 
   .nfActions {
@@ -427,9 +461,29 @@
     margin: 0 auto;
   }
 
+  /* Labels switch to the system face, like the app's other mobile controls. */
   .nfPrimary,
   .nfSecondary {
+    position: relative;
     width: 100%;
-    min-height: 50px;
+    font-family: var(--font-sans);
+    font-size: var(--m-text-control);
+    letter-spacing: -0.01em;
+  }
+
+  .nfPrimary {
+    min-height: var(--m-control-lg);
+  }
+
+  .nfSecondary {
+    min-height: var(--m-control-md);
+  }
+
+  /* 44px-tall hit area around the 36px secondary (34px padding box inside the 1px border);
+     it reaches 4px into the 10px gap, clear of the primary above. */
+  .nfSecondary::before {
+    content: '';
+    position: absolute;
+    inset: calc((var(--m-control-md) - var(--tap)) / 2 - 1px) 0;
   }
 }

@@ -159,25 +159,41 @@ export default function MobileTabBar() {
     return () => window.clearTimeout(timer);
   }, [loading]);
 
-  // Hide while the on-screen keyboard is open (some browsers resize the layout
-  // viewport, which would float the bar on top of the keyboard).
+  // Hide while the on-screen keyboard is open. iOS Safari keeps the layout
+  // viewport and only shrinks the visual viewport; Android Chrome, in-app
+  // browsers (Telegram, Instagram) and resizes-content shrink the layout
+  // viewport too, which would float the bar on top of the keyboard. Measuring
+  // against the height last seen while nothing editable was focused covers
+  // both. The latest such height, not the tallest: after a resize with no
+  // keyboard (a desktop window, split screen) the old height no longer applies.
+  // Remembered per width, so rotating resets it.
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
+    const fullHeights = new Map<number, number>();
     let frame = 0;
     const update = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const keyboardOpen = isEditable(document.activeElement) && window.innerHeight - vv.height > 140;
+        const editing = isEditable(document.activeElement);
+        // Layout width: changes on rotation, not with pinch zoom.
+        const width = document.documentElement.clientWidth;
+        if (!editing) fullHeights.set(width, window.innerHeight);
+        const fullHeight = fullHeights.get(width) ?? window.innerHeight;
+        // × scale: pinch zoom shrinks the visual viewport without a keyboard.
+        const keyboardOpen = editing && fullHeight - vv.height * vv.scale > 140;
         navRef.current?.toggleAttribute('data-keyboard', keyboardOpen);
       });
     };
+    update();
     vv.addEventListener('resize', update);
+    window.addEventListener('resize', update);
     window.addEventListener('focusin', update);
     window.addEventListener('focusout', update);
     return () => {
       cancelAnimationFrame(frame);
       vv.removeEventListener('resize', update);
+      window.removeEventListener('resize', update);
       window.removeEventListener('focusin', update);
       window.removeEventListener('focusout', update);
     };

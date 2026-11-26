@@ -64,6 +64,15 @@
   animation: dialogOut var(--exit-dur, var(--dur-base)) var(--exit-ease, var(--ease-in)) forwards;
 }
 
+/* Loading (aria-busy): hold the height a loaded title fills (the max-height), so the
+   centered dialog doesn't grow at both ends when the details replace the skeleton. */
+@media (min-width: 769px) {
+  .sheet[aria-busy='true'] {
+    height: calc(100vh - 80px);
+    height: min(940px, calc(100dvh - 80px));
+  }
+}
+
 .sheet::-webkit-scrollbar {
   display: none;
 }
@@ -179,6 +188,21 @@
   }
 }
 
+/* Touch (and the phone sheet): a 44px hit area centered on the button. Sized on its
+   own, so it holds for the 40px and the 32px button, whatever the 1px border takes
+   from the padding box that `inset` would resolve against. */
+@media (max-width: 768px), (pointer: coarse) {
+  .closeButton::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--tap);
+    height: var(--tap);
+    margin: calc(var(--tap) / -2) 0 0 calc(var(--tap) / -2);
+  }
+}
+
 /* ---- Hero ---- */
 
 .head {
@@ -210,7 +234,9 @@
 .titleBlock {
   position: absolute;
   left: var(--pad);
-  right: calc(var(--pad) + 120px); /* clear of the trailer controls */
+  /* Clear of the trailer controls: 3 × 44px + 2 × 10px, 28px from the edge (180px), or
+     Replay + full screen (about 194px). */
+  right: calc(var(--pad) + 168px);
   bottom: 34px;
   z-index: 3;
   max-width: 660px;
@@ -425,12 +451,13 @@
   stroke: none;
 }
 
-.roundButton:active:not(:disabled) {
+.roundButton:active:not([aria-disabled='true']) {
   transform: scale(0.92);
   transition-duration: var(--dur-instant);
 }
 
-.roundButton:disabled {
+/* Pending: aria-disabled (not `disabled`), so the focused button keeps focus. */
+.roundButton[aria-disabled='true'] {
   cursor: default;
   opacity: 0.6;
 }
@@ -492,23 +519,23 @@
     transform: scale(var(--press-scale));
   }
 
-  .roundButton:hover:not(:disabled) {
+  .roundButton:hover:not([aria-disabled='true']) {
     background: rgba(40, 40, 44, 0.78);
     border-color: rgba(255, 255, 255, 0.6);
   }
 
-  .roundButton.isOn:hover:not(:disabled) {
+  .roundButton.isOn:hover:not([aria-disabled='true']) {
     background: rgba(var(--accent-rgb), 0.18);
     border-color: rgba(var(--accent-rgb), 0.95);
     color: #e2fff6;
   }
 
-  .listWide:not(.isOn):hover:not(:disabled) {
+  .listWide:not(.isOn):hover:not([aria-disabled='true']) {
     background: #f1f1f1;
     border-color: #f1f1f1;
   }
 
-  .bellButton.isOn:hover:not(:disabled) {
+  .bellButton.isOn:hover:not([aria-disabled='true']) {
     background: var(--accent-color);
     filter: brightness(1.06);
   }
@@ -586,6 +613,11 @@
   min-width: 0;
 }
 
+/* Phones swap long labels for short ones (see .labelFull below). */
+.labelShort {
+  display: none;
+}
+
 .fact dd {
   margin: 0;
   font-size: 14px;
@@ -594,14 +626,44 @@
   overflow-wrap: anywhere;
 }
 
+/* A standalone link in the facts list, so it gets a full-height (44px+) target:
+   the 16px+ row gap and the plain-text label above leave room for it. */
 .inlineLink {
+  position: relative;
+  display: inline-block;
   color: rgba(255, 255, 255, 0.94);
   text-decoration: underline;
   text-decoration-color: rgba(255, 255, 255, 0.22);
   text-underline-offset: 3px;
   transition:
     color var(--dur-fast) var(--ease-out),
-    text-decoration-color var(--dur-fast) var(--ease-out);
+    text-decoration-color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+
+/* Touch: a 44px band per name — its 1.5em line box plus equal overhang above and below
+   (the dd's line-height is 1.5). Each director is its own flex item, so no band reaches
+   another name: names sharing a line meet at the ", " (bands don't extend sideways;
+   a full name is wider than 44px anyway), and a wrapped line starts a whole band lower
+   (row-gap = 44px minus one line). */
+@media (max-width: 768px), (pointer: coarse) {
+  .directors {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 0.3em;
+    row-gap: calc(var(--tap) - 1.5em);
+  }
+
+  .inlineLink::before {
+    content: '';
+    position: absolute;
+    inset: calc((1.5em - var(--tap)) / 2) 0;
+  }
+}
+
+.inlineLink:active {
+  opacity: 0.6;
+  transition-duration: var(--dur-instant);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -620,10 +682,19 @@
   list-style: none;
 }
 
+/* In a narrow column the date drops under its tag whole, instead of either breaking mid-word. */
 .schedule li {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 8px;
+  column-gap: 8px;
+  row-gap: 0;
+}
+
+.scheduleTag,
+.scheduleDate {
+  white-space: nowrap;
+  overflow-wrap: normal;
 }
 
 .scheduleTag {
@@ -829,13 +900,20 @@
   backdrop-filter: blur(6px);
 }
 
+/* Two lines, so franchise entries ("The Hunger Games: Mockingjay…") stay distinguishable;
+   the min-height keeps every card's meta row on one baseline. */
 .moreTitle {
+  display: -webkit-box;
+  min-height: 2.6em;
   overflow: hidden;
   font-size: 13.5px;
   font-weight: 600;
+  line-height: 1.3;
   color: var(--text-white);
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  overflow-wrap: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .moreMeta {
@@ -865,9 +943,14 @@
   row-gap: 14px;
 }
 
+/* The scroller clips both axes, so it pads 4px all round (the negative margin keeps
+   the header's layout where it was): room for the 2px+2px focus ring and the touch
+   hit areas below. */
 .seasonChips {
   display: flex;
   gap: 8px;
+  margin: -4px;
+  padding: 4px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -876,13 +959,16 @@
   display: none;
 }
 
+/* No overflow clipping on the chip itself (it would clip the touch hit area too);
+   the label span does the ellipsis. */
 .seasonChip {
   position: relative;
+  display: inline-flex;
   flex: none;
+  align-items: center;
   max-width: 220px;
   height: 36px;
   padding: 0 15px;
-  overflow: hidden;
   border-radius: var(--radius-pill);
   font-size: 13.5px;
   font-weight: 600;
@@ -890,12 +976,28 @@
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--hairline-strong);
   white-space: nowrap;
-  text-overflow: ellipsis;
   transition:
     transform var(--dur-fast) var(--ease-out),
     background-color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
     color var(--dur-fast) var(--ease-out);
+}
+
+.seasonChipLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 36px chip, 44px hit area: -5px, since inset resolves against the padding box
+   inside the 1px border (4px past the chip, inside the scroller's padding). Phones
+   always get it (in the ≤768px block). */
+@media (pointer: coarse) {
+  .seasonChip::before {
+    content: '';
+    position: absolute;
+    inset: -5px 0;
+  }
 }
 
 .seasonChipActive {
@@ -1078,6 +1180,25 @@
   color: rgba(255, 255, 255, 0.78);
 }
 
+/* "Dec 4, 2011 · 45m": dot-separated like the title meta, so the date and runtime
+   don't read as one string. One unbreakable unit: if the row is too narrow, the pair
+   wraps under the E1 pill together, never leaving a dot at the start of a line. */
+.epFacts {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ep-dot-gap, 8px);
+  white-space: nowrap;
+}
+
+.epDot {
+  flex: none;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+
 .epHere {
   display: inline-flex;
   align-items: center;
@@ -1131,12 +1252,16 @@
     border-color var(--dur-fast) var(--ease-out);
 }
 
-/* 36px visual, 44px hit area. */
+/* 36px visual, 44px hit area: sized on its own and centered, since `inset` would
+   resolve against the 34px padding box inside the 1px border. */
 .checkpointButton::before {
   content: '';
   position: absolute;
-  inset: -4px;
-  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  width: var(--tap);
+  height: var(--tap);
+  margin: calc(var(--tap) / -2) 0 0 calc(var(--tap) / -2);
 }
 
 .checkpointButton svg {
@@ -1154,7 +1279,7 @@
   height: 18px;
 }
 
-.checkpointButton:active:not(:disabled) {
+.checkpointButton:active:not([aria-disabled='true']) {
   transform: scale(0.88);
   transition-duration: var(--dur-instant);
 }
@@ -1170,7 +1295,7 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .checkpointButton:hover:not(:disabled):not(.checkpointActive) {
+  .checkpointButton:hover:not([aria-disabled='true']):not(.checkpointActive) {
     color: #fff;
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.16);
@@ -1260,6 +1385,55 @@
   flex-direction: column;
   gap: 12px;
   padding-bottom: 40px;
+}
+
+/* Episode rows: the still keeps its 16:9 box (.skel's fixed height would collapse it),
+   and the bars sit in the same line boxes as a loaded row — a 19.5px title line,
+   the 18px meta row and three 20.25px overview lines (phones: 18.2px, 18px, two 19.5px). */
+.epStill.skel {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+
+.skelEpNumber {
+  width: 14px;
+  height: 14px;
+  margin: 0 auto;
+  border-radius: 5px;
+}
+
+.skelEpTitle {
+  width: min(48%, 260px);
+  height: 14px;
+  margin: 2.75px 0;
+}
+
+.skelEpMeta {
+  width: min(34%, 170px);
+  height: 12px;
+  margin: 3px 0;
+}
+
+.skelEpOverview {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Desktop clamps overviews at three lines (13.5px × 1.5 = 20.25px boxes); phones show
+   two (see the ≤768px block). */
+.skelEpOverview .skel {
+  width: 92%;
+  height: 10px;
+  margin: 5.125px 0;
+}
+
+.skelEpOverview .skel:nth-child(2) {
+  width: 86%;
+}
+
+.skelEpOverview .skel:nth-child(3) {
+  width: 62%;
 }
 
 .errorState {
@@ -1391,6 +1565,10 @@
     max-height: calc(100dvh - 32px);
   }
 
+  .sheet[aria-busy='true'] {
+    height: calc(100dvh - 32px);
+  }
+
   .hero {
     max-height: 70dvh;
   }
@@ -1401,7 +1579,11 @@
    ========================================================================== */
 
 @media (max-width: 768px) {
+  /* Side safe areas (landscape notch / rounded corners) join the gutter, like every other
+     mobile surface. Symmetric, so the edge-to-edge rows and centered chrome stay balanced. */
   .root {
+    --safe-x: max(var(--safe-left), var(--safe-right));
+    --pad: calc(var(--gutter) + var(--safe-x));
     align-items: flex-end;
     padding: calc(var(--safe-top) + 10px) 0 0;
   }
@@ -1459,24 +1641,22 @@
     box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
   }
 
+  /* 10px grabber zone + a 44px title row; the title clears the close button. */
   .bar {
     height: 54px;
-    padding: 10px 60px 0;
+    padding: 10px calc(var(--pad) + var(--m-icon-btn) + 12px) 0;
   }
 
+  .barTitle {
+    font-size: var(--m-text-headline);
+  }
+
+  /* Centered on the bar's title row (y = 32px), right edge on the content gutter. */
   .closeButton {
-    top: 12px;
-    right: 12px;
-    width: 32px;
-    height: 32px;
-  }
-
-  /* 32px visual, 44px hit area. */
-  .closeButton::before {
-    content: '';
-    position: absolute;
-    inset: -6px;
-    border-radius: 50%;
+    top: calc(32px - var(--m-icon-btn) / 2);
+    right: var(--pad);
+    width: var(--m-icon-btn);
+    height: var(--m-icon-btn);
   }
 
   .closeButton svg {
@@ -1485,14 +1665,15 @@
     stroke-width: 2.5;
   }
 
-  /* Hero: edge to edge, 16:9 */
+  /* Hero: edge to edge, 16:9 (capped in landscape, below) */
   .hero {
     max-height: none;
     --trailer-side: none;
     --trailer-bottom-height: 38%;
     --trailer-top-color: rgba(0, 0, 0, 0.5);
     --trailer-top-height: 40%;
-    --trailer-controls-right: 12px;
+    /* Right edge on the content gutter, in line with the close button and the actions. */
+    --trailer-controls-right: var(--pad);
     --trailer-controls-bottom: 12px;
   }
 
@@ -1509,20 +1690,21 @@
 
   .tagline {
     margin-bottom: 6px;
-    font-size: 12px;
+    font-size: var(--m-text-caption);
     text-shadow: none;
   }
 
   .title {
-    font-size: 26px;
-    line-height: 1.12;
+    font-size: var(--m-text-title1);
+    font-weight: var(--m-weight-title);
+    line-height: 1.15;
     letter-spacing: -0.02em;
     text-shadow: none;
   }
 
   .meta {
     margin-top: 8px;
-    font-size: 13px;
+    font-size: var(--m-text-footnote);
     color: rgba(255, 255, 255, 0.66);
     text-shadow: none;
   }
@@ -1536,10 +1718,16 @@
     height: 13px;
   }
 
+  /* SD / HD: an uppercase micro-label */
+  .qualityBadge {
+    font-size: var(--m-text-caption2);
+    font-weight: 700;
+  }
+
   .chips {
     display: flex;
     gap: 6px;
-    margin: 14px calc(-1 * var(--pad)) 0;
+    margin: 12px calc(-1 * var(--pad)) 0;
     padding: 0 var(--pad);
     overflow-x: auto;
     list-style: none;
@@ -1556,10 +1744,10 @@
     display: inline-flex;
     flex: none;
     align-items: center;
-    height: 28px;
+    height: var(--m-chip);
     padding: 0 12px;
     border-radius: var(--radius-pill);
-    font-size: 12.5px;
+    font-size: var(--m-text-footnote);
     font-weight: 500;
     color: rgba(255, 255, 255, 0.78);
     background: rgba(255, 255, 255, 0.06);
@@ -1567,6 +1755,7 @@
     white-space: nowrap;
   }
 
+  /* One 44px row: Watch on (primary) beside 44px circles. */
   .actions {
     gap: 10px;
     margin-top: 16px;
@@ -1575,27 +1764,66 @@
   .watchButton {
     flex: 1 1 auto;
     justify-content: center;
-    height: 50px;
+    gap: 8px;
+    height: var(--m-control-lg);
     padding: 0 14px;
-    border-radius: var(--radius-md);
-    font-size: 15px;
+    border-radius: var(--m-radius-control);
+    font-size: var(--m-text-control);
+    font-weight: 600;
+  }
+
+  /* Whole logos only: when the row is tight (a 320px screen beside My List and the bell)
+     the items that don't fit wrap onto a clipped second line, the "+N" first, then the
+     last logos, instead of spilling out of the button. The 1px padding keeps the logos'
+     edge rings inside the clip. */
+  .watchLogos {
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 0 5px;
+    min-width: 0;
+    height: 24px;
+    margin: -1px;
+    padding: 1px;
+    overflow: hidden;
   }
 
   .watchLogo {
-    width: 26px;
-    height: 26px;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+  }
+
+  .watchMore {
+    font-size: var(--m-text-caption);
+    font-weight: 600;
+  }
+
+  .watchArrow {
+    width: 14px;
+    height: 14px;
   }
 
   .roundButton {
-    width: 50px;
-    height: 50px;
+    width: var(--m-control-lg);
+    height: var(--m-control-lg);
+    font-size: var(--m-text-control);
+    font-weight: 600;
+  }
+
+  .roundButton svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .roundButton svg.filledIcon {
+    width: 18px;
+    height: 18px;
   }
 
   .listWide {
     flex: 1 1 auto;
     width: auto;
-    border-radius: var(--radius-md);
-    font-size: 15px;
+    border-radius: var(--m-radius-control);
   }
 
   /* Body */
@@ -1604,29 +1832,59 @@
     padding-top: 24px;
   }
 
-  /* Ratings read as an inset list: label left, stars right. */
+  .label {
+    font-size: var(--m-text-caption2);
+    letter-spacing: 0.06em;
+  }
+
+  /* Ratings read as an inset list, each row a label over its stars (a long label like
+     "Your recommendation · public" gets the full width instead of wrapping beside them). */
   .ratingPanel {
     flex-direction: column;
     flex-wrap: nowrap;
     gap: 0;
-    padding: 2px 14px;
+    padding: 0 14px;
   }
 
   .ratingBlock {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    min-height: 52px;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 0;
   }
 
   .ratingBlock + .ratingBlock {
     border-top: 1px solid var(--hairline);
   }
 
+  /* Every row of stars on one grid: 24px glyphs on a 44px pitch, the first glyph on the
+     label's left edge. Interactive stars are 44px buttons (the negative margins keep the
+     row's footprint to the glyphs); read-only ones space out to the same pitch. */
+  .ratingBlock [role='group'] {
+    --star-size: 24px;
+    gap: 0;
+    margin: calc((var(--star-size) - var(--tap)) / 2);
+  }
+
+  .ratingBlock [role='group'] button {
+    width: var(--tap);
+    height: var(--tap);
+    padding: 0;
+    border-radius: 10px;
+  }
+
+  .ratingBlock [role='img'] {
+    --star-size: 24px;
+    gap: calc(var(--tap) - var(--star-size));
+  }
+
+  .ratingHint {
+    font-size: var(--m-text-footnote);
+    line-height: 24px;
+  }
+
   .overview {
-    font-size: 15px;
-    line-height: 1.55;
+    font-size: var(--m-text-body);
+    line-height: 1.45;
   }
 
   .overview:not(.overviewOpen) {
@@ -1644,18 +1902,19 @@
     right: 0;
     bottom: 0;
     padding: 0 0 0 52px;
-    font-size: 15px;
+    font-size: var(--m-text-body);
     font-weight: 600;
-    line-height: 1.55;
+    line-height: 1.45;
     color: var(--accent-color);
     background: linear-gradient(90deg, rgba(11, 11, 12, 0), var(--sheet-bg) 46%);
     border-radius: 0;
   }
 
+  /* 44px hit area: the 1.45em line box plus equal overhang above and below. */
   .moreToggle::before {
     content: '';
     position: absolute;
-    inset: -11px -10px -11px 8px; /* 44px hit area */
+    inset: calc((1.45em - var(--tap)) / 2) -10px calc((1.45em - var(--tap)) / 2) 8px;
   }
 
   .facts {
@@ -1673,21 +1932,49 @@
     display: none;
   }
 
+  /* Two to a row, "Production Countries" would wrap and push its value below the
+     neighbor's: show "Countries" instead, keeping the full label for screen readers. */
+  .labelShort {
+    display: inline;
+  }
+
+  .labelFull {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .fact dd {
-    font-size: 14.5px;
+    font-size: var(--m-text-subhead);
+  }
+
+  .scheduleTag {
+    font-size: var(--m-text-caption);
+  }
+
+  .scheduleDate {
+    font-size: var(--m-text-footnote);
   }
 
   /* Sections */
   .section {
-    margin-top: 34px;
+    margin-top: 32px;
   }
 
   .sectionHead {
-    margin-bottom: 14px;
+    margin-bottom: 12px;
   }
 
   .sectionTitle {
-    font-size: 19px;
+    font-size: var(--m-text-title3);
+    font-weight: var(--m-weight-title);
   }
 
   .row {
@@ -1713,7 +2000,7 @@
   /* Names get two lines on phones — truncating "Jesse Plem…" reads worse than a wrap. */
   .castName {
     display: -webkit-box;
-    font-size: 12.5px;
+    font-size: var(--m-text-footnote);
     line-height: 1.25;
     white-space: normal;
     -webkit-box-orient: vertical;
@@ -1722,19 +2009,32 @@
   }
 
   .castRole {
-    font-size: 11.5px;
+    font-size: var(--m-text-caption);
+  }
+
+  /* Wide enough for "The Hunger Games:" on one line, with three title lines, so franchise
+     entries ("…Mockingjay - Part 1" / "Part 2") read apart. Every card stretches to the
+     row's tallest and the meta line sits at the card's foot: one baseline across the
+     row, however many lines each title takes. */
+  .moreRow {
+    align-items: stretch;
   }
 
   .moreCard {
-    width: 112px;
+    width: 128px;
   }
 
   .moreTitle {
-    font-size: 13px;
+    min-height: 0;
+    margin-bottom: -4px;
+    font-size: var(--m-text-footnote);
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
   }
 
   .moreMeta {
-    font-size: 11.5px;
+    margin-top: auto;
+    font-size: var(--m-text-caption);
   }
 
   /* Episodes */
@@ -1742,33 +2042,71 @@
     display: none;
   }
 
+  /* 32px chips; the row's 6px padding (the scroller clips both axes) leaves room for
+     their 44px hit areas, and keeps the row as tall as before. */
   .seasonChips {
     flex: 1 0 100%;
     margin: 0 calc(-1 * var(--pad));
-    padding: 4px var(--pad);
+    padding: 6px var(--pad);
     scroll-padding-inline: var(--pad);
     scroll-snap-type: x proximity;
     order: 3;
   }
 
   .seasonChip {
+    height: var(--m-control-sm);
+    padding: 0 14px;
+    font-size: var(--m-text-footnote);
     scroll-snap-align: start;
   }
 
-  /* 36px chip, 44px hit area. */
+  /* 44px hit area, centered and sized on its own (inset would resolve against the
+     padding box inside the 1px border); the full chip width, so neighbors don't meet. */
   .seasonChip::before {
     content: '';
     position: absolute;
-    inset: -4px 0;
+    top: 50%;
+    right: -1px;
+    bottom: auto;
+    left: -1px;
+    height: var(--tap);
+    margin-top: calc(var(--tap) / -2);
   }
 
+  /* Many seasons: the select itself stays a 44px target; the 36px pill is drawn behind it. */
   .seasonSelectWrap {
     margin-left: auto;
   }
 
+  .seasonSelectWrap::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 0;
+    left: 0;
+    height: var(--m-control-md);
+    margin-top: calc(var(--m-control-md) / -2);
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--hairline-strong);
+    pointer-events: none;
+  }
+
   .seasonSelect {
-    height: 44px;
-    font-size: 16px; /* no iOS zoom on focus */
+    position: relative;
+    height: var(--tap);
+    background: transparent;
+    border-color: transparent;
+    font-size: 16px; /* inputs stay ≥16px: no iOS zoom on focus */
+  }
+
+  .seasonSelect:focus-visible {
+    outline: none;
+  }
+
+  .seasonSelectWrap:has(.seasonSelect:focus-visible)::before {
+    outline: 2px solid var(--accent-ring);
+    outline-offset: 2px;
   }
 
   .episodes {
@@ -1796,22 +2134,54 @@
   }
 
   .epTitle {
-    font-size: 14.5px;
+    font-size: var(--m-text-subhead);
   }
 
   .epMeta {
+    --ep-dot-gap: 6px;
     gap: 4px 8px;
-    font-size: 11.5px;
+    font-size: var(--m-text-caption);
+  }
+
+  .epIndex {
+    font-size: var(--m-text-caption2);
+  }
+
+  .epHere {
+    font-size: var(--m-text-caption2);
+    letter-spacing: 0.06em;
   }
 
   .epOverview {
-    font-size: 13px;
+    font-size: var(--m-text-footnote);
     -webkit-line-clamp: 2;
     line-clamp: 2;
   }
 
   .checkpointButton {
+    width: var(--m-icon-btn);
+    height: var(--m-icon-btn);
     margin: -4px -4px 0 0;
+  }
+
+  .emptyNote {
+    font-size: var(--m-text-subhead);
+  }
+
+  /* Error state */
+  .errorTitle {
+    font-size: var(--m-text-title3);
+    font-weight: var(--m-weight-title);
+  }
+
+  .errorText {
+    font-size: var(--m-text-subhead);
+  }
+
+  .retryButton {
+    height: var(--m-control-lg);
+    font-size: var(--m-text-control);
+    font-weight: 600;
   }
 
   /* Skeleton mirrors the stacked layout */
@@ -1826,35 +2196,93 @@
   }
 
   .skelActions {
-    margin-top: 18px;
+    margin-top: 16px;
   }
 
   .skelButton {
     flex: 1 1 auto;
-    height: 50px;
-    border-radius: var(--radius-md);
+    height: var(--m-control-lg);
+    border-radius: var(--m-radius-control);
   }
 
   .skelRound {
-    width: 50px;
-    height: 50px;
+    width: var(--m-control-lg);
+    height: var(--m-control-lg);
+  }
+
+  /* Episode rows: an 18.2px title line (14px × 1.3) and two 19.5px overview lines. */
+  .skelEpTitle {
+    margin: 2.1px 0;
+  }
+
+  .skelEpOverview .skel {
+    margin: 4.75px 0;
+  }
+
+  .skelEpOverview .skel:nth-child(2) {
+    width: 68%;
+  }
+
+  .skelEpOverview .skel:nth-child(3) {
+    display: none;
   }
 }
 
-/* Small phones (iPhone SE / mini): give episode titles more of the row. */
+/* Narrow desktop windows: hover lights the drawn 36px pill, not the 44px select box. */
+@media (max-width: 768px) and (hover: hover) and (pointer: fine) {
+  .seasonSelect:hover {
+    background: transparent;
+    border-color: transparent;
+  }
+
+  .seasonSelectWrap:hover::before {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.24);
+  }
+}
+
+/* Phone-layout landscape (SE, Display Zoom, split views): a full-width 16:9 hero would be
+   taller than the sheet, so cap it to keep the title and actions in view on open. The
+   trailer and still cover-crop to whatever box they get. */
+@media (max-width: 768px) and (orientation: landscape) {
+  .hero {
+    max-height: 62vh;
+    max-height: 62dvh;
+  }
+}
+
+/* Small phones (iPhone SE / mini): give episode titles more of the row, and tighten the
+   meta gaps so "E1  Jan 20, 2008 · 59m" stays on one line in the narrower column. */
 @media (max-width: 380px) {
   .episode {
     grid-template-columns: 100px minmax(0, 1fr);
     gap: 10px;
   }
+
+  .epMeta {
+    --ep-dot-gap: 4px;
+    column-gap: 6px;
+  }
 }
 
-/* Touch screens: interactive stars get full-size hit areas inside the modal. */
+/* Touch screens: 44×44 star targets inside the modal (StarRating's own touch size is
+   40px). The glyphs keep their size and the row's outer edges stay put (the inline
+   margins absorb the extra width). In a row too tight for 5 × 44px next to its label,
+   the stars give those 4px back first (the very high shrink factor), down to
+   StarRating's 40px (the floor below), before the label has to wrap. */
 @media (pointer: coarse) {
+  .ratingBlock [role='group'] {
+    flex-shrink: 99999;
+    min-width: calc(5 * var(--hit, 40px));
+    margin-inline: calc((var(--star-size, 24px) - var(--tap)) / 2);
+  }
+
   .ratingBlock [role='group'] button {
+    flex-shrink: 1;
     align-items: center;
     justify-content: center;
-    min-width: 34px;
-    min-height: 44px;
+    width: var(--tap);
+    min-width: var(--hit, 40px);
+    min-height: var(--tap);
   }
 }

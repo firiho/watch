@@ -9,7 +9,7 @@ import type {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { usePathname, useRouter } from 'next/navigation';
-import { useModal } from '@/context/modal-context';
+import { useModalActions } from '@/context/modal-context';
 import { useRecommendations } from '@/context/recommendations-context';
 import StarRating from '@/components/star-rating/star-rating';
 import { SEARCH_DEBOUNCE_MS } from '@/lib/constants';
@@ -64,6 +64,9 @@ const Search = () => {
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [shortcut, setShortcut] = useState('⌘K');
+  // Set when "See all results" leaves the page: the scroll lock lets go at once
+  // instead of after the exit animation (see seeAllResults).
+  const [leavingPage, setLeavingPage] = useState(false);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -71,7 +74,7 @@ const Search = () => {
   const clearOnCloseRef = useRef(false);
   const touchStartYRef = useRef<number | null>(null);
 
-  const { openModal } = useModal();
+  const { openModal } = useModalActions();
   const { getRecommendation } = useRecommendations();
   const router = useRouter();
   const pathname = usePathname();
@@ -84,7 +87,7 @@ const Search = () => {
   const showSeeAll = trimmed.length > 0 && results.length > 0;
   const optionCount = results.length + (showSeeAll ? 1 : 0);
 
-  useBodyScrollLock(isMounted);
+  useBodyScrollLock(isMounted && !leavingPage);
 
   // ⌘K on Apple platforms, Ctrl K elsewhere (after mount, so SSR matches).
   useEffect(() => {
@@ -99,6 +102,8 @@ const Search = () => {
       return;
     }
     clearOnCloseRef.current = false;
+    // Reopened mid-exit after "See all results": take the scroll lock back.
+    setLeavingPage(false);
     // Commit synchronously and focus inside the same gesture — iOS only raises
     // the keyboard for focus() calls made while handling the tap.
     open(true);
@@ -125,6 +130,7 @@ const Search = () => {
   useEffect(() => {
     if (state !== 'closed') return;
     setActiveIndex(-1);
+    setLeavingPage(false);
     if (clearOnCloseRef.current) {
       clearOnCloseRef.current = false;
       setQuery('');
@@ -233,14 +239,28 @@ const Search = () => {
   }, [isMounted]);
 
   const selectResult = (item: SearchResult) => {
-    dismiss({ restoreFocus: false, clear: false });
+    // Focus goes back to the trigger first (synchronously, preventScroll):
+    // MovieModal records document.activeElement as its return target when it
+    // opens, and the blurred input would otherwise leave that as <body>.
+    // The query stays for next time (clear: false); Cancel / Esc clear it.
+    dismiss({ restoreFocus: true, clear: false });
     openModal(item.id, item.media_type);
   };
 
   const seeAllResults = () => {
     if (!trimmed) return;
     dismiss({ restoreFocus: false, clear: false });
-    router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+    // Un-pin the page now, not after the exit animation. The browser files the page's
+    // scroll offset with its history entry when the next one is pushed, and a pinned
+    // page reads 0, so Back would land at the top. The page comes back at the offset
+    // it was pinned at (no visible jump, and the phone sheet still covers it), and the
+    // results page then opens at the top as usual.
+    setLeavingPage(true);
+    const href = `/search?q=${encodeURIComponent(trimmed)}`;
+    // Already on /search: a new query replaces the results, so Back leaves search
+    // instead of stepping through every earlier result set.
+    if (pathname === '/search') router.replace(href);
+    else router.push(href);
   };
 
   const onInputKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
@@ -319,11 +339,14 @@ const Search = () => {
           <div className={styles.root} data-state={state}>
             <div className={styles.backdrop} aria-hidden="true" onClick={() => dismiss()} />
 
+            {/* Modal only while open: during the exit animation it's still laid out, and a
+                dialog underneath (the title just picked) must not take it for one above. */}
             <div
               ref={panelRef}
               className={styles.panel}
               role="dialog"
-              aria-modal="true"
+              aria-modal={isOpen || undefined}
+              inert={state === 'closing' || undefined}
               aria-label="Search"
               onAnimationEnd={(event) => {
                 if (event.target === event.currentTarget && stateRef.current === 'closing') finish();

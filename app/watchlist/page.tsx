@@ -103,15 +103,15 @@ export default function MyListPage() {
     // Firebase is still restoring the session: don't flash the signed-out screen.
     if (authLoading) {
       return (
-        <div className={styles.page}>
+        <main className={styles.page}>
           {renderHeader()}
           {skeletonGrid}
-        </div>
+        </main>
       );
     }
 
     return (
-      <div className={styles.page}>
+      <main className={styles.page}>
         <div className={`${styles.emptyState} ${listStyles.gate}`}>
           <div className={styles.emptyIcon}>
             <LockIcon />
@@ -123,12 +123,12 @@ export default function MyListPage() {
             <ArrowIcon />
           </Link>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className={styles.page}>
+    <main className={styles.page}>
       {renderHeader(
         <ListFilters
           media={mediaFilter}
@@ -153,7 +153,7 @@ export default function MyListPage() {
           <p className={styles.emptyText}>
             {hasActiveFilters
               ? 'Try changing or clearing filters to see more titles in your list.'
-              : 'Browse movies and TV shows and click "Add to My List" to start building your collection.'}
+              : 'Browse movies and TV shows and click “Add to My List” to start building your collection.'}
           </p>
           {hasActiveFilters ? (
             <button type="button" className={styles.emptyAction} onClick={clearFilters}>
@@ -184,6 +184,6 @@ export default function MyListPage() {
           ))}
         </div>
       )}
-    </div>
+    </main>
   );
 }

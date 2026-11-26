@@ -197,9 +197,12 @@
   .scroller {
     --fade-start: 0px;
     --fade-end: 0px;
+    /* 6px past a 32px chip: room for its 44px target, which this scroller's overflow
+       would otherwise clip. */
+    --reach: calc((var(--tap) - var(--m-control-sm)) / 2);
     flex-wrap: nowrap;
     gap: 8px;
-    padding: 2px var(--page-x, var(--gutter));
+    padding: var(--reach) var(--page-x, var(--gutter));
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-x: contain;
@@ -240,13 +243,13 @@
 
   .chip,
   .reset {
-    height: 40px;
+    height: var(--m-control-sm);
     border: 1px solid var(--hairline);
     border-radius: var(--radius-pill);
     font-family: var(--font-sans);
-    font-size: 15px;
+    font-size: var(--m-text-footnote);
     font-weight: 500;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.005em;
     scroll-snap-align: start;
     transition:
       transform var(--dur-fast) var(--ease-out),
@@ -256,8 +259,8 @@
   }
 
   .chip {
-    gap: 6px;
-    padding: 0 12px 0 16px;
+    gap: 5px;
+    padding: 0 10px 0 13px;
     background: rgba(255, 255, 255, 0.06);
   }
 
@@ -281,20 +284,20 @@
   }
 
   .icon svg {
-    width: 15px;
-    height: 15px;
+    width: 14px;
+    height: 14px;
   }
 
   .chevron {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
     margin-left: 0;
     color: var(--text-muted);
   }
 
   .chevron svg {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
   }
 
   .active {
@@ -311,13 +314,14 @@
     color: var(--accent-color);
   }
 
-  /* Extend the real control over the border and 2px past the pill:
-     a 44px tall tap target (the scroller's 2px padding keeps it unclipped). */
+  /* Extend the real control over the 1px border and 6px past the pill: a 44px tall
+     tap target (the scroller's matching padding keeps it unclipped). Offsets resolve
+     against the padding box, hence the extra 1px each way. */
   .select {
-    top: -3px;
+    top: calc(-1px - var(--reach));
     left: -1px;
     width: calc(100% + 2px);
-    height: calc(100% + 6px);
+    height: calc(100% + 2px + 2 * var(--reach));
   }
 
   .chip:has(.select:focus-visible) {
@@ -325,15 +329,25 @@
   }
 
   .reset {
-    gap: 6px;
-    padding: 0 16px 0 14px;
+    position: relative;
+    gap: 5px;
+    padding: 0 13px 0 11px;
     background: transparent;
     color: var(--text-secondary);
   }
 
+  /* Same 44px-tall target as the chips' selects: 6px past the 32px pill, unclipped thanks
+     to the scroller's padding. `inset` resolves against the padding box inside the 1px
+     border, hence -7px (30 + 14 = 44) and -1px (back to the border edge). */
+  .reset::before {
+    content: '';
+    position: absolute;
+    inset: calc(-1px - var(--reach)) -1px;
+  }
+
   .reset svg {
-    width: 12px;
-    height: 12px;
+    width: 11px;
+    height: 11px;
   }
 
   .reset {

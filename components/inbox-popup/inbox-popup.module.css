@@ -1,5 +1,6 @@
-/* Reminder notifications. Desktop: a stack under the top-right of the navbar.
-   Phones: thumb-reachable, just above the tab bar (or the home indicator). */
+/* Reminder notifications: a stack under the top-right of the navbar (desktop
+   layout only). Phones get the top bar's bell + Notifications sheet instead
+   (notifications-bell.tsx), so the stack is never shown at ≤768px. */
 
 .stack {
   position: fixed;
@@ -39,13 +40,6 @@
   }
 }
 
-@keyframes slotOutMobile {
-  to {
-    opacity: 0;
-    transform: translate3d(0, 14px, 0) scale(0.96);
-  }
-}
-
 /* ---- Card ---- */
 
 .card {
@@ -79,13 +73,6 @@
   from {
     opacity: 0;
     transform: translate3d(18px, 0, 0) scale(0.98);
-  }
-}
-
-@keyframes cardInMobile {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 18px, 0) scale(0.98);
   }
 }
 
@@ -190,11 +177,17 @@
     transform var(--dur-fast) var(--ease-out);
 }
 
+/* 44×44 hit area centred on the button (28px desktop, 30px phone). Sized on its own:
+   an `inset` resolves against the padding box inside the 1px border and comes up 2px short.
+   It stays inside the card (which clips) with 6px to spare. */
 .iconBtn::before {
   content: '';
   position: absolute;
-  inset: -8px;
-  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  width: var(--tap);
+  height: var(--tap);
+  margin: calc(var(--tap) / -2) 0 0 calc(var(--tap) / -2);
 }
 
 .iconBtn:active {
@@ -405,107 +398,27 @@
   transition: transform var(--dur-base) var(--ease-out);
 }
 
-/* ---- Phones ---- */
-
-@media (max-width: 768px) {
-  .stack {
-    top: auto;
-    bottom: calc(max(var(--tabbar-offset), var(--safe-bottom)) + 12px);
-    left: calc(12px + var(--safe-left));
-    right: calc(12px + var(--safe-right));
-    width: auto;
-    /* Newest sits closest to the thumb; older ones stack upward. */
-    flex-direction: column-reverse;
-    transition:
-      translate var(--dur-base) var(--ease-out),
-      opacity var(--dur-fast) var(--ease-out),
-      transform var(--dur-fast) var(--ease-out),
-      visibility 0s;
-  }
-
-  /* Make room for a toast (they share the bottom edge on phones). */
-  :global(body:has([data-sonner-toast])) .stack {
-    translate: 0 -68px;
-  }
-
-  /* Step aside while a sheet / modal / menu has the screen. */
-  :global(html[data-scroll-locked]) .stack {
-    opacity: 0;
-    transform: translate3d(0, 12px, 0);
-    visibility: hidden;
-    transition:
-      translate var(--dur-base) var(--ease-out),
-      opacity var(--dur-fast) var(--ease-in),
-      transform var(--dur-fast) var(--ease-in),
-      visibility 0s linear var(--dur-fast);
-  }
-
-  .leaving {
-    animation-name: slotOutMobile;
-  }
-
-  .card {
-    padding: 14px 14px 12px 16px;
-    border-radius: 20px;
-    animation-name: cardInMobile;
-    animation-duration: 460ms;
-    animation-timing-function: var(--ease-ios);
-  }
-
-  .cardTitle {
-    font-size: 16px;
-  }
-
-  .bodyText {
-    font-size: 14px;
-  }
-
-  .iconBtn {
-    width: 30px;
-    height: 30px;
-  }
-
-  .iconBtn::before {
-    inset: -7px;
-  }
-
-  .actionBtn {
-    height: 44px;
-    border-radius: 12px;
-    font-size: 14.5px;
-  }
-
-  .pill {
-    min-height: 44px;
-    padding: 0 6px 0 14px;
-    font-size: 14px;
-  }
-
-  .pillName {
-    max-width: 52vw;
-    line-height: 42px;
-  }
-
-  .pillExpand {
-    width: 34px;
-    height: 34px;
-  }
-
+/* Touch screens on the desktop layout (tablets, phones in landscape): a 44px hit
+   area for the 28px expand button, centred on it and sized on its own. It reaches
+   ~3px past the pill's edge (nothing clips it), stays inside the 10px gap between
+   stacked pills, and ends where the name button begins (8px gap), so no two
+   targets overlap. */
+@media (pointer: coarse) and (min-width: 769px) {
   .pillExpand::before {
     content: '';
     position: absolute;
-    inset: -5px;
-    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    width: var(--tap);
+    height: var(--tap);
+    translate: -50% -50%;
   }
+}
 
-  /* ~44px-tall target for the title without changing the layout. */
-  .cardTitle {
-    padding: 11px 0;
-    margin: -11px 0;
-  }
+/* ---- Phones: no floating stack (the bell in the top bar opens the sheet) ---- */
 
-  /* The card opens upward from the bottom stack. */
-  .pillChev {
-    transform: rotate(180deg);
+@media (max-width: 768px) {
+  .stack {
+    display: none;
   }
 }

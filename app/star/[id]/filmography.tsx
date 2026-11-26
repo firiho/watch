@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { useModal } from '@/context/modal-context';
+import { useModalActions } from '@/context/modal-context';
 import { haptic } from '@/lib/haptics';
 import type { FilmographyGroup, FilmographyRow } from './credits';
 import styles from './star.module.css';
@@ -88,7 +88,8 @@ export default function Filmography({ groups, index }: FilmographyProps) {
   const listRef = useRef<HTMLUListElement>(null);
   // "Show all" unmounts itself; hand focus to the first newly revealed row instead of <body>.
   const focusRowAfterReveal = useRef<number | null>(null);
-  const { openModal } = useModal();
+  // Actions only, so opening and closing the modal doesn't re-render the whole list.
+  const { openModal } = useModalActions();
 
   useEffect(() => {
     const index = focusRowAfterReveal.current;

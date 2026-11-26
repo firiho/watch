@@ -13,7 +13,9 @@
     bottom: 0;
     z-index: var(--z-tabbar);
     height: var(--tabbar-h);
-    padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
+    /* Only part of the home-indicator inset sits under the tabs (--tabbar-pad-bottom,
+       globals.css), so the labels end ~22px above the screen edge on Face ID phones. */
+    padding: 0 var(--safe-right) var(--tabbar-pad-bottom) var(--safe-left);
     background: var(--glass-bg-strong);
     -webkit-backdrop-filter: var(--glass-filter);
     backdrop-filter: var(--glass-filter);
@@ -40,7 +42,7 @@
   .list {
     display: flex;
     align-items: stretch;
-    height: 54px;
+    height: var(--tabbar-content-h);
     max-width: 560px;
     margin: 0 auto;
     padding: 0 4px;
@@ -74,13 +76,16 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    padding-top: 3px;
+    gap: 2px;
+    /* Icon (26) + gap + label (12) = 40px, nudged down: the label ends 4px above
+       the row's bottom edge. */
+    padding-top: 2px;
     color: var(--text-muted);
-    font-size: 11px;
-    font-weight: 500;
+    font-size: var(--m-text-tab);
+    font-weight: 600;
     letter-spacing: 0.01em;
-    line-height: 1;
+    /* 1.2, not 1: the label clips (ellipsis), and descenders need the room. */
+    line-height: 1.2;
     text-decoration: none;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -101,8 +106,8 @@
   }
 
   .icon svg {
-    width: 25px;
-    height: 25px;
+    width: 24px;
+    height: 24px;
     overflow: visible;
   }
 

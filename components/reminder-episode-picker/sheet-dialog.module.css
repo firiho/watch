@@ -27,6 +27,9 @@
   background: rgba(3, 4, 6, 0.66);
   -webkit-backdrop-filter: blur(12px) saturate(140%);
   backdrop-filter: blur(12px) saturate(140%);
+  /* Nothing under the dim area scrolls (the page is locked), so a swipe here must not
+     rubber-band the page or start iOS pull-to-refresh. Taps still close the sheet. */
+  touch-action: none;
   /* `backwards`: after the entrance, inline opacity (drag) can take over. */
   animation: backdropIn var(--dur-slow) var(--ease-out) backwards;
 }
@@ -94,12 +97,16 @@
     transform var(--dur-fast) var(--ease-out);
 }
 
-/* 44×44 hit area around the 32px glyph. */
+/* 44×44 hit area centred on the button (32px desktop, 36px phone). Sized on its own:
+   an `inset` resolves against the padding box inside the 1px border and comes up 2px short. */
 .close::before {
   content: '';
   position: absolute;
-  inset: -6px;
-  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  width: var(--tap);
+  height: var(--tap);
+  margin: calc(var(--tap) / -2) 0 0 calc(var(--tap) / -2);
 }
 
 .close:active:not(:disabled) {
@@ -195,14 +202,11 @@
     display: block;
   }
 
+  /* The scale's circular icon button; the centred ::before keeps the 44px target. */
   .close {
     top: 14px;
     right: calc(14px + var(--safe-right));
-    width: 30px;
-    height: 30px;
-  }
-
-  .close::before {
-    inset: -7px;
+    width: var(--m-icon-btn);
+    height: var(--m-icon-btn);
   }
 }

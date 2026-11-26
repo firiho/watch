@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
 
 /**
@@ -91,7 +91,20 @@ export function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
 }
 
+const MOBILE_QUERY = '(max-width: 768px)';
+
 /** True when the mobile (≤768px) layout is active. */
 export function isMobileLayout(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches === true;
+  return typeof window !== 'undefined' && window.matchMedia?.(MOBILE_QUERY).matches === true;
+}
+
+function subscribeToLayout(onChange: () => void): () => void {
+  const query = window.matchMedia?.(MOBILE_QUERY);
+  query?.addEventListener('change', onChange);
+  return () => query?.removeEventListener('change', onChange);
+}
+
+/** isMobileLayout(), kept live across resizes and rotation (false on the server and while hydrating). */
+export function useMobileLayout(): boolean {
+  return useSyncExternalStore(subscribeToLayout, isMobileLayout, () => false);
 }

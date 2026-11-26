@@ -9,7 +9,7 @@ export default async function TVShowsPage() {
   const genres = await getGenres('tv');
 
   return (
-    <div className={styles.page}>
+    <main className={styles.page}>
       <header className={styles.discoverHeader}>
         <div className={styles.titleGroup}>
           <h1 className={styles.title}>TV Shows</h1>
@@ -21,6 +21,6 @@ export default async function TVShowsPage() {
       </header>
 
       <DiscoverGrid type="tv" />
-    </div>
+    </main>
   );
 }

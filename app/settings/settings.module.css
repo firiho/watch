@@ -460,11 +460,13 @@
     padding var(--dur-fast) var(--ease-out);
 }
 
-/* 44px tall hit area; chips stay visually compact. */
+/* 44px tall hit area; chips stay visually compact. `inset` resolves against the 34px padding
+   box inside the 1px border: 34 + 2 × 5 = 44. Wrapped rows sit 8px apart, so each row's hit
+   area reaches exactly halfway across the gap. */
 .chip::before {
   content: '';
   position: absolute;
-  inset: -4px -2px;
+  inset: -5px -3px;
 }
 
 .chip:active {
@@ -571,7 +573,7 @@
 .saveButton:disabled {
   border-color: var(--hairline);
   background: rgba(255, 255, 255, 0.05);
-  color: var(--text-faint);
+  color: var(--text-disabled);
   box-shadow: none;
   cursor: default;
 }
@@ -598,13 +600,17 @@
 
 /* ---- Signed-out ------------------------------------------------------------------------ */
 
+/* The same lock card as the My List sign-in gate (collections.module.css .emptyState +
+   watchlist.module.css .gate), with the same geometry, so moving between the two pages
+   doesn't make the card jump. Centered in the space between the top bar and the bottom
+   of the viewport (or the tab bar on phones). */
 .emptyState {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 52vh;
-  padding: 48px 20px;
+  min-height: 62vh;
+  padding: 56px 20px;
   text-align: center;
   animation: rise var(--dur-slow) var(--ease-out) both;
 }
@@ -631,15 +637,16 @@
 .emptyTitle {
   max-width: 28ch;
   margin: 0 0 8px;
-  font-size: 22px;
+  overflow-wrap: break-word;
+  font-size: 20px;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.3;
   letter-spacing: -0.015em;
   color: var(--text-white);
 }
 
 .emptyText {
-  max-width: 36ch;
+  max-width: 38ch;
   margin: 0;
   font-size: 15px;
   line-height: 1.55;
@@ -652,7 +659,7 @@
   justify-content: center;
   gap: 8px;
   min-height: 46px;
-  margin-top: 26px;
+  margin-top: 24px;
   padding: 0 24px;
   border: 1px solid var(--accent-color);
   border-radius: var(--radius-pill);
@@ -662,6 +669,7 @@
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.03em;
+  white-space: nowrap;
   box-shadow: 0 14px 34px -16px rgba(var(--accent-rgb), 0.8);
   transition:
     transform var(--dur-fast) var(--ease-out),
@@ -804,14 +812,29 @@
   }
 
   .identity {
+    gap: 14px;
     margin-bottom: 28px;
     padding: 14px;
   }
 
   .avatar {
-    width: 52px;
-    height: 52px;
-    font-size: 22px;
+    width: 44px;
+    height: 44px;
+    font-size: var(--m-text-title3);
+  }
+
+  .avatar svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .identityName {
+    font-size: var(--m-text-headline);
+    font-weight: 600;
+  }
+
+  .identityMeta {
+    font-size: var(--m-text-footnote);
   }
 
   .group {
@@ -823,9 +846,20 @@
     padding: 0 14px;
   }
 
+  .groupTitle {
+    font-size: var(--m-text-caption2);
+    letter-spacing: 0.06em;
+  }
+
+  .groupFooter {
+    font-size: var(--m-text-footnote);
+  }
+
+  /* iOS Settings rows: 44px, body-size labels, quieter values. */
   .row {
-    min-height: 50px;
+    min-height: var(--tap);
     padding: 7px 14px;
+    font-size: var(--m-text-body);
   }
 
   .row + .row::before,
@@ -837,15 +871,115 @@
     left: 56px;
   }
 
+  .rowLabel {
+    font-size: var(--m-text-body);
+  }
+
+  .rowSub {
+    font-size: var(--m-text-footnote);
+  }
+
   .rowValue {
     max-width: 50%;
+    font-size: var(--m-text-subhead);
+  }
+
+  .mono {
+    font-size: var(--m-text-footnote);
+  }
+
+  /* The value stays ≥16px so iOS doesn't zoom the page on focus. */
+  .rowInput {
+    font-size: max(16px, var(--m-text-body));
+  }
+
+  .confirmText {
+    font-size: var(--m-text-subhead);
+  }
+
+  .secondaryBtn,
+  .dangerBtn {
+    min-height: var(--m-control-lg);
+    border-radius: var(--m-radius-control);
+    font-size: var(--m-text-control);
   }
 
   .cardPadded {
     padding: 12px;
   }
 
+  /* 12px between wrapped rows: each row's 44px hit area reaches 6px past its 32px chips, so
+     neighbouring rows meet exactly halfway and the chips stay as dense (44px a row) as before. */
+  .chips {
+    row-gap: 12px;
+  }
+
+  .chip {
+    min-height: var(--m-control-sm);
+    padding: 0 12px;
+    font-size: var(--m-text-footnote);
+  }
+
+  /* `inset` resolves against the padding box inside the 1px border: 30 + 2 × 7 = 44. */
+  .chip::before {
+    inset: calc((var(--m-control-sm) - var(--tap)) / 2 - 1px) -3px;
+  }
+
+  .chipSkeleton {
+    height: var(--m-control-sm);
+  }
+
   .saveRow {
     margin-bottom: 28px;
+  }
+
+  /* Button labels switch to the system face, like the app's other mobile controls. */
+  .saveButton {
+    min-height: var(--m-control-lg);
+    border-radius: var(--m-radius-control);
+    font-family: var(--font-sans);
+    font-size: var(--m-text-control);
+    letter-spacing: -0.01em;
+  }
+
+  /* Signed-out lock card: matches the My List gate on phones (collections.module.css
+     .emptyState / .emptyActionPrimary), size for size. */
+  .emptyState {
+    min-height: calc(100dvh - var(--nav-h) - var(--safe-top) - var(--tabbar-offset) - 60px);
+    padding: 40px 8px;
+  }
+
+  .emptyIcon {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 18px;
+  }
+
+  .emptyIcon svg {
+    width: 27px;
+    height: 27px;
+  }
+
+  .emptyTitle {
+    font-size: var(--m-text-title3);
+  }
+
+  .emptyText {
+    font-size: var(--m-text-body);
+    line-height: 1.45;
+  }
+
+  .emptyAction {
+    min-height: var(--m-control-lg);
+    margin-top: 20px;
+    padding: 0 22px;
+    font-family: var(--font-sans);
+    font-size: var(--m-text-control);
+    letter-spacing: -0.01em;
+  }
+
+  .emptyAction svg {
+    width: 14px;
+    height: 14px;
   }
 }

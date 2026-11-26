@@ -6,7 +6,7 @@ import { preconnect } from 'react-dom';
 import { haptic } from '@/lib/haptics';
 import { buildEmbedUrl, estimateTime, useYouTubeBridge, YT, YT_EMBED_ORIGIN } from './use-youtube-bridge';
 import TrailerTheater from './trailer-theater';
-import { IconArrowUpRight, IconExpand, IconPlay, IconReplay, IconSoundOff, IconSoundOn } from './icons';
+import { IconArrowUpRight, IconExpand, IconPause, IconPlay, IconReplay, IconSoundOff, IconSoundOn } from './icons';
 import styles from './trailer-player.module.css';
 
 /**
@@ -74,7 +74,7 @@ export interface TrailerPlayerProps {
  * Hero trailer. A still covers a cover-cropped, chrome-free YouTube embed and
  * only crossfades away once playback is genuinely underway — never showing
  * YouTube's title bar, pause overlay or end screen. Our own glass controls
- * (mute, replay, full screen) sit bottom-right; the full screen view is a
+ * (pause, mute, replay, full screen) sit bottom-right; the full screen view is a
  * theater with YouTube's controls and sound.
  */
 export default function TrailerPlayer({
@@ -103,6 +103,8 @@ export default function TrailerPlayer({
   const [blocked, setBlocked] = useState(false);
   const [errorCode, setErrorCode] = useState<number | null>(null);
   const [userStarted, setUserStarted] = useState(false);
+  /** Paused with our own control: stays paused (under the still) until Play or Replay. */
+  const [userPaused, setUserPaused] = useState(false);
   const [theaterOpen, setTheaterOpen] = useState(false);
   const [theaterStart, setTheaterStart] = useState(0);
   const [armedKey, setArmedKey] = useState<string | null>(null);
@@ -122,6 +124,7 @@ export default function TrailerPlayer({
     setBlocked(false);
     setErrorCode(null);
     setUserStarted(false);
+    setUserPaused(false);
     setTheaterOpen(false);
   }
 
@@ -211,7 +214,7 @@ export default function TrailerPlayer({
   const playIntent = (autoPlay && autoplayAllowed) || userStarted;
   const armed = hasVideo && armedKey === videoKey;
   const mountFrame = armed && origin !== null && playIntent && errorCode === null;
-  const canPlay = mountFrame && active && inView && pageVisible && !theaterOpen && !ended;
+  const canPlay = mountFrame && active && inView && pageVisible && !theaterOpen && !ended && !userPaused;
 
   useEffect(() => {
     canPlayRef.current = canPlay;
@@ -340,14 +343,19 @@ export default function TrailerPlayer({
     onRevealChangeRef.current?.(revealed);
   }, [revealed]);
 
-  const handleFrameLoad = () => {
-    bridge.connect();
+  /** Still not playing a while after we asked it to: the browser refused — offer the Play pill. */
+  const armBlockedCheck = () => {
     window.clearTimeout(blockedTimer.current);
     blockedTimer.current = window.setTimeout(() => {
       if (bridge.snapshot.current.state !== YT.PLAYING && !revealedRef.current && canPlayRef.current) {
         setBlocked(true);
       }
     }, BLOCKED_AFTER_MS);
+  };
+
+  const handleFrameLoad = () => {
+    bridge.connect();
+    armBlockedCheck();
   };
 
   const openTheater = useCallback(() => {
@@ -389,10 +397,25 @@ export default function TrailerPlayer({
     bridge.command('setVolume', [100]);
   };
 
+  // Pausing goes through canPlay: the still fades back over the video, then the
+  // player pauses (so YouTube's paused UI is never seen). Nothing else resumes it —
+  // not scrolling back, not a tab switch, not closing the theater — only Play/Replay.
+  const togglePause = () => {
+    haptic('selection');
+    const next = !userPaused;
+    setUserPaused(next);
+    if (next) return;
+    // iOS refuses audible playback the frame didn't start itself (sound chosen while
+    // paused): the PAUSED that follows hands over to the theater, as an unmute does.
+    if (!muted) unmuteAtRef.current = performance.now();
+    armBlockedCheck();
+  };
+
   const replay = () => {
     haptic('selection');
     endedRef.current = false;
     setEnded(false);
+    setUserPaused(false);
     bridge.command('seekTo', [0, true]);
   };
 
@@ -454,18 +477,33 @@ export default function TrailerPlayer({
               <span>Replay</span>
             </button>
           ) : (
-            <button
-              type="button"
-              className={`${styles.ctrl} ${muted ? '' : styles.ctrlOn}`}
-              onClick={toggleMute}
-              aria-label="Mute trailer"
-              aria-pressed={muted}
-              title={muted ? 'Unmute' : 'Mute'}
-            >
-              <span key={muted ? 'muted' : 'sound'} className={styles.ctrlIcon}>
-                {muted ? <IconSoundOff /> : <IconSoundOn />}
-              </span>
-            </button>
+            <>
+              {/* A toggle keeps one name; aria-pressed carries the state, the tooltip the action. */}
+              <button
+                type="button"
+                className={styles.ctrl}
+                onClick={togglePause}
+                aria-label="Pause trailer"
+                aria-pressed={userPaused}
+                title={userPaused ? 'Play trailer' : 'Pause trailer'}
+              >
+                <span key={userPaused ? 'paused' : 'playing'} className={styles.ctrlIcon}>
+                  {userPaused ? <IconPlay /> : <IconPause />}
+                </span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.ctrl} ${muted ? '' : styles.ctrlOn}`}
+                onClick={toggleMute}
+                aria-label="Mute trailer"
+                aria-pressed={muted}
+                title={muted ? 'Unmute' : 'Mute'}
+              >
+                <span key={muted ? 'muted' : 'sound'} className={styles.ctrlIcon}>
+                  {muted ? <IconSoundOff /> : <IconSoundOn />}
+                </span>
+              </button>
+            </>
           )}
           <button
             type="button"

@@ -48,10 +48,13 @@
 }
 
 /* ---- Still: covers the video until it plays cleanly ---- */
+/* Opaque on its own, so a see-through still (the dimmed poster) or a missing one
+   never lets the player — loading, buffering or paused — show through. */
 .cover {
   position: absolute;
   inset: 0;
   z-index: 1;
+  background: var(--trailer-bg, #050506);
   transition: opacity 480ms var(--ease-in-out);
 }
 
@@ -298,13 +301,14 @@
 }
 
 @media (max-width: 768px) {
+  /* 36px icon buttons 8px apart: their 44px hit areas meet exactly, never overlap. */
   .controls {
     gap: 8px;
   }
 
   .ctrl {
-    width: 40px;
-    height: 40px;
+    width: var(--m-icon-btn);
+    height: var(--m-icon-btn);
   }
 
   .ctrl svg {
@@ -312,19 +316,55 @@
     height: 18px;
   }
 
-  /* 40px visual, 44px hit area. */
-  .ctrl::before,
+  .pill {
+    height: var(--m-control-md);
+    gap: 8px;
+    padding: 0 14px 0 5px;
+    font-size: var(--m-text-control);
+    font-weight: 600;
+  }
+
+  .pillIcon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .pillIcon svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .pillIconReplay svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .pillArrow {
+    width: 13px;
+    height: 13px;
+  }
+
+  /* 44px hit areas, sized on their own (inset would resolve against the padding box
+     inside the 1px border): a centered square on the round buttons; the pill's full
+     width, 44px tall. The root's overflow: hidden leaves them whole: the cluster sits at
+     least 12px in from its edges. */
+  .ctrl::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--tap);
+    height: var(--tap);
+    margin: calc(var(--tap) / -2) 0 0 calc(var(--tap) / -2);
+  }
+
   .pill::before {
     content: '';
     position: absolute;
-    inset: -2px;
-    border-radius: inherit;
-  }
-
-  .pill {
-    height: 40px;
-    gap: 9px;
-    padding: 0 16px 0 6px;
-    font-size: 13.5px;
+    top: 50%;
+    right: -1px;
+    left: -1px;
+    height: var(--tap);
+    margin-top: calc(var(--tap) / -2);
   }
 }

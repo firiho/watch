@@ -163,12 +163,66 @@
   }
 }
 
+/* Phones: a 36px field, the iOS search-field height (and the search sheet's), inside a
+   44px-tall box so the whole row still takes the tap. The fill, border and focus ring
+   move to ::before; the input itself keeps the full 44px. */
 @media (max-width: 768px) {
   .form {
-    height: 46px;
+    height: var(--tap);
+    border-radius: var(--m-radius-control);
+    background: none;
+    box-shadow: none;
+    isolation: isolate;
+  }
+
+  .form::before {
+    content: '';
+    position: absolute;
+    inset: calc((var(--tap) - var(--m-control-md)) / 2) 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 0 0 1px var(--hairline);
+    pointer-events: none;
+    transition:
+      background-color var(--dur-fast) var(--ease-out),
+      box-shadow var(--dur-base) var(--ease-out);
+  }
+
+  .form:focus-within {
+    background: none;
+    box-shadow: none;
+  }
+
+  .form:focus-within::before {
+    background: rgba(255, 255, 255, 0.07);
+    box-shadow:
+      inset 0 0 0 1px rgba(var(--accent-rgb), 0.55),
+      0 0 0 4px rgba(var(--accent-rgb), 0.12);
   }
 
   .leading {
-    flex-basis: 42px;
+    flex-basis: 40px;
+  }
+
+  .leading svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .clearDot {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* A mouse on a narrow window: the hover ring follows the field, not the 44px box. */
+@media (max-width: 768px) and (hover: hover) and (pointer: fine) {
+  .form:hover:not(:focus-within) {
+    box-shadow: none;
+  }
+
+  .form:hover:not(:focus-within)::before {
+    box-shadow: inset 0 0 0 1px var(--hairline-strong);
   }
 }

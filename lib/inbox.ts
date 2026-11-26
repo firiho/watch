@@ -22,26 +22,39 @@ export interface MovieInboxItem extends BaseInboxItem {
 
 export type InboxItem = TVInboxItem | MovieInboxItem;
 
+/**
+ * Live unread inbox for `uid`, newest first. `onError` fires if the listener
+ * dies (permissions, network); Firestore does not resume a failed listener, so
+ * subscribe again to retry.
+ */
 export const subscribeToInbox = (
   uid: string,
-  onChange: (items: InboxItem[]) => void
+  onChange: (items: InboxItem[]) => void,
+  onError?: (error: Error) => void
 ): (() => void) => {
   const q = query(
     collection(db, 'users', uid, 'inbox'),
     where('status', '==', 'unread')
   );
-  return onSnapshot(q, (snapshot) => {
-    const items: InboxItem[] = snapshot.docs.map((d) => ({
-      id: d.id,
-      ...(d.data() as Omit<InboxItem, 'id'>),
-    }) as InboxItem);
-    items.sort((a, b) => {
-      const aMs = a.deliveredAt?.toMillis?.() ?? 0;
-      const bMs = b.deliveredAt?.toMillis?.() ?? 0;
-      return bMs - aMs;
-    });
-    onChange(items);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const items: InboxItem[] = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<InboxItem, 'id'>),
+      }) as InboxItem);
+      items.sort((a, b) => {
+        const aMs = a.deliveredAt?.toMillis?.() ?? 0;
+        const bMs = b.deliveredAt?.toMillis?.() ?? 0;
+        return bMs - aMs;
+      });
+      onChange(items);
+    },
+    (error) => {
+      console.error('Inbox listener failed', error);
+      onError?.(error);
+    }
+  );
 };
 
 export const markInboxItem = async (

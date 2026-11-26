@@ -347,13 +347,20 @@
   }
 }
 
-/* ---- Progress pills --------------------------------------------------------- */
+/* ---- Controls: progress pills + play/pause ------------------------------------ */
 
-.indicators {
+.controls {
   position: absolute;
   right: 100px;
   bottom: 48px;
   z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Glass tray (desktop); on phones the pills sit bare. */
+.indicators {
   display: flex;
   align-items: center;
   padding: 0 9px;
@@ -368,15 +375,79 @@
     border-color var(--dur-fast) var(--ease-out);
 }
 
+/* The target is wider than the pill it draws: 7px dot + 18px = 25px (WCAG 2.5.8 wants 24). */
 .indicator {
   display: grid;
   place-items: center;
   height: 36px;
-  padding: 0 5px;
+  padding: 0 9px;
   border: 0;
   border-radius: var(--radius-pill);
   background: none;
   cursor: pointer;
+}
+
+/* Round glass button beside the tray. The visible face is a child, so phones can give it a
+   44px target around a smaller circle. */
+.playPause {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: rgba(255, 255, 255, 0.86);
+  cursor: pointer;
+}
+
+.playPauseFace {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--accent-rgb), 0.12);
+  background-color: rgba(0, 0, 0, 0.42);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  box-shadow: 0 10px 30px -10px rgba(2, 12, 27, 0.7);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.playPauseGlyph {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  animation: glyphPop var(--dur-base) var(--ease-spring);
+}
+
+@keyframes glyphPop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+.playPause:active .playPauseFace {
+  transform: scale(0.92);
+  transition-duration: var(--dur-instant);
+}
+
+/* Ring the visible circle rather than the (larger, on phones) target. */
+.playPause:focus-visible {
+  outline: none;
+}
+
+.playPause:focus-visible .playPauseFace {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
 }
 
 .pill {
@@ -456,6 +527,32 @@
   .indicator[data-active]:hover .pill {
     background-color: rgba(255, 255, 255, 0.42);
   }
+
+  .playPause:hover .playPauseFace {
+    border-color: rgba(var(--accent-rgb), 0.22);
+    background-color: rgba(0, 0, 0, 0.6);
+    color: #ffffff;
+  }
+}
+
+/* Touch screens on the desktop layout (tablets, phones in landscape): 44px targets at an even
+   pitch, which keeps the row compact enough to clear a signed-in CTA row on an iPhone mini
+   in landscape (812px wide with 50px side insets). */
+@media (hover: none) and (pointer: coarse) and (min-width: 769px) {
+  .indicators {
+    padding: 0 2px;
+  }
+
+  .indicator {
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+
+  .playPause {
+    width: 46px;
+    height: 46px;
+  }
 }
 
 /* ---- Tablet ----------------------------------------------------------------- */
@@ -476,8 +573,10 @@
     max-width: 680px;
   }
 
-  .indicators {
-    right: var(--gutter);
+  /* 20px in from the gutter: clears the fixed corner rule (side-lines.module.css), which
+     sits 40px from the edge at this size and would otherwise cut through the button. */
+  .controls {
+    right: calc(var(--gutter) + 20px);
     bottom: 40px;
   }
 }
@@ -485,9 +584,11 @@
 /* ---- Phones ----------------------------------------------------------------- */
 
 @media (max-width: 768px) {
+  /* Fills the screen down to just above the tab bar, leaving the first rail's heading peeking
+     out (56px), so the image gets the room. Capped for tablets in portrait. */
   .heroGallery {
-    height: 78vh;
-    height: min(78svh, 680px);
+    height: min(calc(100vh - var(--tabbar-offset) - 56px), 840px);
+    height: min(calc(100svh - var(--tabbar-offset) - 56px), 840px);
     min-height: 460px;
   }
 
@@ -512,18 +613,19 @@
     max-width: 100%;
   }
 
+  /* "FEATURED" is a micro-label; the type · year · rating beside it is a meta line. */
   .eyebrow {
     gap: 9px;
     margin-bottom: 10px;
-    font-size: 12px;
-    letter-spacing: 0.04em;
+    font-size: var(--m-text-caption2);
+    letter-spacing: 0.06em;
     text-transform: uppercase;
   }
 
   .eyebrowMeta {
     gap: 6px;
-    font-size: 12px;
-    letter-spacing: 0.02em;
+    font-size: var(--m-text-footnote);
+    letter-spacing: 0;
     text-transform: none;
   }
 
@@ -536,25 +638,24 @@
     margin-right: 6px;
   }
 
-  .heroTitle {
-    margin-bottom: 10px;
-    font-size: 36px;
-    line-height: 1.04;
-    letter-spacing: -0.025em;
-  }
-
+  /* Stays under the page titles (--m-text-large-title), which are the biggest text on a screen.
+     Weight 800 is kept here only: it marks the featured title. Long titles step down. */
+  .heroTitle,
   .heroTitle[data-size='medium'] {
-    font-size: 32px;
+    margin-bottom: 10px;
+    font-size: var(--m-text-hero);
+    line-height: 1.06;
+    letter-spacing: -0.02em;
   }
 
   .heroTitle[data-size='long'] {
-    font-size: 28px;
-    line-height: 1.08;
+    font-size: calc(var(--m-text-hero) - 4px);
+    line-height: 1.1;
   }
 
   .heroDescription {
-    margin-bottom: 18px;
-    font-size: 15px;
+    margin-bottom: 16px;
+    font-size: var(--m-text-body);
     line-height: 1.45;
     color: rgba(204, 214, 246, 0.8);
   }
@@ -569,11 +670,13 @@
     flex: 1 1 0;
     min-width: 0;
     max-width: 200px;
-    height: 46px;
+    height: var(--m-control-lg);
     padding: 0 16px;
     gap: 8px;
-    font-size: 15px;
-    border-radius: var(--radius-sm);
+    font-size: var(--m-text-control);
+    font-weight: 600;
+    letter-spacing: 0;
+    border-radius: var(--m-radius-control);
   }
 
   .heroButtons > :only-child {
@@ -586,23 +689,48 @@
     height: 18px;
   }
 
-  /* Bare pills centered under the content; each target is 44px tall. */
-  .indicators {
+  /* Bare pills centered under the content, the play/pause circle beside them at the same
+     pitch. Every target is 44x44: five pills + the button come to 276px, which fits a
+     320px screen. */
+  .controls {
     left: 50%;
     right: auto;
     bottom: 2px;
+    gap: 12px;
+    transform: translateX(-50%);
+  }
+
+  .indicators {
     padding: 0;
     border: 0;
     background: none;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     box-shadow: none;
-    transform: translateX(-50%);
   }
 
   .indicator {
+    min-width: 44px;
     height: 44px;
-    padding: 0 6px;
+    padding: 0;
+  }
+
+  .playPause {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* A touch lighter than the desktop glass: here it sits on the near-black scrim. */
+  .playPauseFace {
+    width: 32px;
+    height: 32px;
+    border-color: var(--hairline-strong);
+    background-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .playPauseGlyph {
+    width: 12px;
+    height: 12px;
   }
 
   .pill {
@@ -614,20 +742,6 @@
   .indicator[data-active] .pill {
     width: 24px;
     background-color: rgba(255, 255, 255, 0.3);
-  }
-}
-
-@media (max-width: 380px) {
-  .heroTitle {
-    font-size: 32px;
-  }
-
-  .heroTitle[data-size='medium'] {
-    font-size: 29px;
-  }
-
-  .heroTitle[data-size='long'] {
-    font-size: 26px;
   }
 }
 
@@ -669,14 +783,55 @@
     height: 44px;
   }
 
-  .indicators {
-    right: calc(var(--gutter) + var(--safe-right));
+  .controls {
+    left: auto;
+    right: calc(var(--gutter) + var(--safe-right) + 20px); /* clear of the corner rule */
     bottom: 22px;
+    transform: none;
+  }
+}
+
+/* Short desktop windows: the corner rule sits 60px in above 1080px. */
+@media (min-width: 1081px) and (max-height: 520px) and (orientation: landscape) {
+  .controls {
+    right: calc(var(--gutter) + 32px);
+  }
+}
+
+/* Phone layout in landscape (iPhone SE, most Android phones): the tab bar floats over the
+   bottom of this full-height hero and used to hide the pills and clip the CTA row. Lift
+   the content above it and put the controls at the right end of the CTA row (both 44px
+   tall), keeping the buttons clear of them (276px controls + 16px gap). */
+@media (max-width: 768px) and (max-height: 520px) and (orientation: landscape) {
+  .heroContentWrapper {
+    padding-bottom: calc(var(--tabbar-offset) + 10px);
+  }
+
+  .heroButtons {
+    max-width: calc(100vw - 2 * var(--gutter) - var(--safe-left) - var(--safe-right) - 292px);
+  }
+
+  .controls {
+    right: calc(var(--gutter) + var(--safe-right)); /* no corner rule on phones */
+    bottom: calc(var(--tabbar-offset) + 10px);
+  }
+}
+
+/* ~320px tall (Display Zoom minis): a one-line blurb keeps the title clear of the top bar. */
+@media (max-width: 768px) and (max-height: 340px) and (orientation: landscape) {
+  .heroDescription {
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .heroSlide .media {
     animation: none !important;
+  }
+
+  /* Nothing rotates, so there is nothing to pause (also hides it before hydration). */
+  .playPause {
+    display: none;
   }
 }

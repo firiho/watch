@@ -773,7 +773,7 @@
 
 .ctaDisabled {
   background: rgba(255, 255, 255, 0.07);
-  color: var(--text-faint);
+  color: var(--text-disabled);
   box-shadow: inset 0 0 0 1px var(--hairline);
 }
 
@@ -816,6 +816,34 @@
   }
 }
 
+/* ---- Touch on the desktop dialog (tablets, landscape phones): 44px targets, same look ---- */
+
+@media (pointer: coarse) and (min-width: 769px) {
+  /* The 38px segment reaches across the control's 3px padding: 44px tall. */
+  .tab::before {
+    content: '';
+    position: absolute;
+    inset: -3px 0;
+  }
+
+  /* The scroller clips, so it needs 5px of room above and below the chips for their hit
+     area; the margins give the extra padding back, so nothing moves. */
+  .seasonChips {
+    margin-top: -3px;
+    margin-bottom: -1px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  /* 44px-tall hit area around the 34px chip. `inset` resolves against the 32px padding box
+     inside the 1px border: 32 + 2 × 6 = 44. */
+  .seasonChip::before {
+    content: '';
+    position: absolute;
+    inset: -6px 0;
+  }
+}
+
 /* ---- Phones: bottom sheet ---- */
 
 @media (max-width: 768px) {
@@ -831,20 +859,57 @@
     width: 56px;
   }
 
+  .kicker {
+    font-size: var(--m-text-caption);
+  }
+
+  /* Sheet header. */
   .title {
-    font-size: 20px;
+    font-size: var(--m-text-headline);
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+
+  .subtitle {
+    font-size: var(--m-text-footnote);
+  }
+
+  /* Segmented control on the scale: a 32px track, the thumb inset 2px (28px segments). The
+     hairline moves to an inset shadow so the border doesn't eat into the 32px. Raised over the
+     tab panel, which would otherwise paint over the bottom of the segments' 44px targets (they
+     reach 6px past the track; the season chips' targets start 12px below it). */
+  .tabs {
+    z-index: 1;
+    padding: 2px;
+    border: 0;
+    border-radius: var(--m-radius-control);
+    box-shadow: inset 0 0 0 1px var(--hairline);
+  }
+
+  .tabIndicator {
+    top: 2px;
+    bottom: 2px;
+    left: 2px;
+    width: calc(50% - 2px);
   }
 
   .tab {
-    height: 40px;
-    font-size: 14px;
+    gap: 6px;
+    height: calc(var(--m-control-sm) - 4px);
+    font-size: var(--m-text-footnote);
   }
 
-  /* Reach into the control's padding: a 46px-tall target per segment. */
+  .tabIcon {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* 44px-tall target per 28px segment (no border): 8px above and below, 6px past the track. */
   .tab::before {
     content: '';
     position: absolute;
-    inset: -3px 0;
+    inset: calc((var(--m-control-sm) - 4px - var(--tap)) / 2) 0;
   }
 
   .body {
@@ -856,35 +921,77 @@
   }
 
   .nextTitle {
-    font-size: 16px;
+    font-size: var(--m-text-headline);
   }
 
   .nextSub {
-    font-size: 13.5px;
+    font-size: var(--m-text-footnote);
+  }
+
+  .lastEpisodeLabel {
+    font-size: var(--m-text-caption2);
+    letter-spacing: 0.06em;
+  }
+
+  .lastEpisodeBadge {
+    font-size: var(--m-text-caption);
+  }
+
+  .lastEpisodeName {
+    font-size: var(--m-text-subhead);
+  }
+
+  /* The scroller clips, so it needs 6px of room above and below the 32px chips for their hit
+     areas; the margins give the extra padding back, so nothing moves. */
+  .seasonChips {
+    margin-top: -4px;
+    margin-bottom: -2px;
+    padding-top: 6px;
+    padding-bottom: 6px;
   }
 
   .seasonChip {
-    height: 36px;
-    font-size: 13.5px;
+    height: var(--m-control-sm);
+    padding: 0 13px;
+    font-size: var(--m-text-footnote);
   }
 
-  /* 44px-tall hit area around the 36px chip. */
+  /* 44px-tall hit area around the 32px chip. `inset` resolves against the 30px padding box
+     inside the 1px border: 30 + 2 × 7 = 44. */
   .seasonChip::before {
     content: '';
     position: absolute;
-    inset: -4px 0;
+    inset: calc((var(--m-control-sm) - var(--tap)) / 2 - 1px) 0;
+  }
+
+  .singleSeasonLabel {
+    font-size: var(--m-text-caption2);
+    letter-spacing: 0.06em;
   }
 
   .episodeRow {
-    min-height: 64px;
+    min-height: 56px;
+    padding: 9px 14px;
+  }
+
+  .episodeBadge {
+    font-size: var(--m-text-caption);
   }
 
   .episodeName {
-    font-size: 15px;
+    font-size: var(--m-text-subhead);
   }
 
   .episodeDateRow {
-    font-size: 12.5px;
+    font-size: var(--m-text-footnote);
+  }
+
+  .emptyRow {
+    font-size: var(--m-text-subhead);
+  }
+
+  .error {
+    font-size: var(--m-text-footnote);
   }
 
   .footer {
@@ -892,7 +999,9 @@
   }
 
   .cta {
-    height: 52px;
-    font-size: 16px;
+    height: var(--m-control-lg);
+    border-radius: var(--m-radius-control);
+    font-size: var(--m-text-control);
+    font-weight: 600;
   }
 }

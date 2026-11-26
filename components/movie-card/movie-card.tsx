@@ -6,7 +6,7 @@ import Image from 'next/image';
 import styles from './movie-card.module.css';
 import { useWatchlist } from '@/context/watchlist-context';
 import { useAuth } from '@/context/auth-context';
-import { useModal } from '@/context/modal-context';
+import { useModalActions } from '@/context/modal-context';
 import { useReminders } from '@/context/reminder-context';
 import { useRecommendations } from '@/context/recommendations-context';
 import { useToggleReminder } from '@/hooks/use-toggle-reminder';
@@ -101,7 +101,8 @@ const MovieCard = ({
   const { hasReminder } = useReminders();
   const { toggleReminder } = useToggleReminder();
   const { user, isAdmin } = useAuth();
-  const { openModal, activeItem } = useModal();
+  // Actions only: reading the open title would re-render every card on each open and close.
+  const { openModal, onModalOpen, isModalOpen } = useModalActions();
   const inList = isInList(id);
   const myRating = getRating(id);
   const rec = getRecommendation(id, mediaType);
@@ -155,10 +156,18 @@ const MovieCard = ({
     }, PANEL_EXIT_MS);
   }, []);
 
-  // Never leave a card expanded behind the detail modal.
+  // Never leave a card expanded behind the detail modal. Opening from this card collapses it in
+  // handleOpen; this covers the other ways in (keyboard on another card, search, the inbox, the
+  // hero). Only an expanded card listens, so the rest of the page sits out every open.
   useEffect(() => {
-    if (activeItem) collapse();
-  }, [activeItem, collapse]);
+    if (!expanded) return;
+    // An open that landed between expanding and this effect running sent no notification.
+    if (isModalOpen()) {
+      collapse();
+      return;
+    }
+    return onModalOpen(collapse);
+  }, [expanded, isModalOpen, onModalOpen, collapse]);
 
   useEffect(
     () => () => {
@@ -198,6 +207,8 @@ const MovieCard = ({
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
     hoverTimerRef.current = setTimeout(() => {
       hoverTimerRef.current = null;
+      // The modal opened some other way while the hover delay ran: don't expand behind it.
+      if (isModalOpen()) return;
       if (closeTimerRef.current) {
         clearTimeout(closeTimerRef.current);
         closeTimerRef.current = null;
@@ -294,7 +305,7 @@ const MovieCard = ({
         {rec && (
           <span className={styles.recBadge}>
             <span className={styles.recLabel}>Rec</span>
-            <StarRating value={rec.stars} size="xs" tone="accent" />
+            <StarRating value={rec.stars} size="xs" tone="accent" className={styles.recStars} />
           </span>
         )}
 

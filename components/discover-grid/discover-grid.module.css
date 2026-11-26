@@ -128,4 +128,49 @@
     min-height: 80px;
     padding: 24px 0 4px;
   }
+
+  .loading {
+    gap: 10px;
+  }
+
+  .spinner {
+    width: 18px;
+    height: 18px;
+  }
+
+  .loadingText,
+  .endText {
+    font-size: var(--m-text-caption);
+  }
+
+  .endText {
+    gap: 12px;
+  }
+
+  /* A secondary pill (36px) with a 44px target, labelled like the other mobile buttons. */
+  .retryButton {
+    position: relative;
+    min-height: var(--m-control-md);
+    gap: 7px;
+    padding: 0 16px;
+    font-family: var(--font-sans);
+    font-size: var(--m-text-control);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .retryButton::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: calc(100% + 2px);
+    height: var(--tap);
+    translate: -50% -50%;
+  }
+
+  .retryButton svg {
+    width: 14px;
+    height: 14px;
+  }
 }

@@ -1,14 +1,20 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { useAuth } from '@/context/auth-context';
-import { useModal } from '@/context/modal-context';
-import { InboxItem, subscribeToInbox, markInboxItem } from '@/lib/inbox';
-import { setCheckpoint } from '@/lib/checkpoints';
+import { useModalActions } from '@/context/modal-context';
+import type { InboxItem } from '@/lib/inbox';
 import { haptic } from '@/lib/haptics';
+import { useMobileLayout } from '@/components/navbar/use-overlay';
+import { confirmInboxItem, dismissInboxItem, useInbox, useLeavingItems } from './inbox-store';
 import styles from './inbox-popup.module.css';
 
-type Shown = { item: InboxItem; leaving: boolean };
+/*
+ * Reminder notifications on the desktop layout: a stack of cards under the
+ * top-right of the navbar. Phones (≤768px) don't get the floating stack; the
+ * top bar's bell opens them in a sheet instead (notifications-bell.tsx). Both
+ * read the same inbox store, so there is one Firestore listener.
+ */
 
 type Swipe = {
   id: string;
@@ -32,56 +38,25 @@ const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion:
 
 const InboxPopup = () => {
   const { user } = useAuth();
-  const { openModal } = useModal();
-  const [items, setItems] = useState<InboxItem[]>([]);
+  const { openModal } = useModalActions();
+  const mobile = useMobileLayout();
+  const uid = user?.uid ?? null;
+  const { items, acting } = useInbox(uid);
   const [minimized, setMinimized] = useState<Record<string, boolean>>({});
-  const [acting, setActing] = useState<Record<string, boolean>>({});
+  // Minimized cards belong to the account that minimized them.
+  const [minimizedFor, setMinimizedFor] = useState(uid);
+  if (minimizedFor !== uid) {
+    setMinimizedFor(uid);
+    setMinimized({});
+  }
   // What's on screen: `items`, plus recently removed ones while they animate out.
-  const [shown, setShown] = useState<Shown[]>([]);
+  const shown = useLeavingItems(items, LEAVE_MS);
 
   const stackRef = useRef<HTMLDivElement>(null);
   const slotRefs = useRef(new Map<string, HTMLDivElement>());
   const lastOffsets = useRef(new Map<string, number>());
   const swipeRef = useRef<Swipe | null>(null);
   const suppressClickRef = useRef(false);
-
-  useEffect(() => {
-    if (!user) {
-      setItems([]);
-      setMinimized({});
-      return;
-    }
-    const unsubscribe = subscribeToInbox(user.uid, setItems);
-    return () => unsubscribe();
-  }, [user]);
-
-  // Mirror `items`, keeping removed ones (at their old position) so they can animate out.
-  useEffect(() => {
-    setShown((prev) => {
-      const ids = new Set(items.map((item) => item.id));
-      const next: Shown[] = items.map((item) => ({ item, leaving: false }));
-      prev.forEach((entry, index) => {
-        if (!ids.has(entry.item.id)) {
-          next.splice(Math.min(index, next.length), 0, { item: entry.item, leaving: true });
-        }
-      });
-      return next;
-    });
-  }, [items]);
-
-  const leavingKey = shown
-    .filter((entry) => entry.leaving)
-    .map((entry) => entry.item.id)
-    .join(',');
-
-  useEffect(() => {
-    if (!leavingKey) return;
-    const timer = window.setTimeout(
-      () => setShown((prev) => prev.filter((entry) => !entry.leaving)),
-      LEAVE_MS + 40
-    );
-    return () => window.clearTimeout(timer);
-  }, [leavingKey]);
 
   // FLIP: when cards come and go, glide the others to their new spots instead of jumping.
   useLayoutEffect(() => {
@@ -113,41 +88,18 @@ const InboxPopup = () => {
     lastOffsets.current = next;
   });
 
-  if (!user || shown.length === 0) return null;
+  if (!user || mobile || shown.length === 0) return null;
 
-  const handleConfirm = async (item: InboxItem) => {
-    if (!user || acting[item.id] || item.type !== 'tv') return;
+  const handleConfirm = (item: InboxItem) => {
+    if (acting.has(item.id) || item.type !== 'tv') return;
     haptic('success');
-    setActing((m) => ({ ...m, [item.id]: true }));
-    try {
-      await setCheckpoint(user.uid, item.reminderId, item.season, item.episode);
-      await markInboxItem(user.uid, item.id, 'confirmed');
-    } catch (e) {
-      console.error('Error confirming inbox item', e);
-    } finally {
-      setActing((m) => {
-        const next = { ...m };
-        delete next[item.id];
-        return next;
-      });
-    }
+    void confirmInboxItem(user.uid, item);
   };
 
-  const handleDismiss = async (item: InboxItem) => {
-    if (!user || acting[item.id]) return;
+  const handleDismiss = (item: InboxItem) => {
+    if (acting.has(item.id)) return;
     haptic('light');
-    setActing((m) => ({ ...m, [item.id]: true }));
-    try {
-      await markInboxItem(user.uid, item.id, 'dismissed');
-    } catch (e) {
-      console.error('Error dismissing inbox item', e);
-    } finally {
-      setActing((m) => {
-        const next = { ...m };
-        delete next[item.id];
-        return next;
-      });
-    }
+    void dismissInboxItem(user.uid, item);
   };
 
   const toggleMinimize = (id: string) => {
@@ -166,7 +118,7 @@ const InboxPopup = () => {
   };
 
   const handlePointerDown = (e: PointerEvent<HTMLElement>, item: InboxItem) => {
-    if (e.pointerType !== 'touch' || !e.isPrimary || acting[item.id]) return;
+    if (e.pointerType !== 'touch' || !e.isPrimary || acting.has(item.id)) return;
     swipeRef.current = {
       id: item.id,
       pointerId: e.pointerId,
@@ -246,7 +198,7 @@ const InboxPopup = () => {
     <div ref={stackRef} className={styles.stack} aria-live="polite" aria-label="Reminders">
       {shown.map(({ item, leaving }) => {
         const isMin = !!minimized[item.id];
-        const isActing = !!acting[item.id];
+        const isActing = acting.has(item.id);
         const isTV = item.type === 'tv';
         const epLabel = isTV ? `S${item.season}·E${item.episode}` : null;
         const kicker = isTV

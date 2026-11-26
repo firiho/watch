@@ -54,6 +54,13 @@ export const IconPlay = ({ className }: IconProps) => (
   </svg>
 );
 
+export const IconPause = ({ className }: IconProps) => (
+  <svg {...base} className={className}>
+    <rect x="6.5" y="5.25" width="3.75" height="13.5" rx="1.1" fill="currentColor" stroke="none" />
+    <rect x="13.75" y="5.25" width="3.75" height="13.5" rx="1.1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 export const IconClose = ({ className }: IconProps) => (
   <svg {...base} className={className}>
     <path d="M6.5 6.5l11 11" />

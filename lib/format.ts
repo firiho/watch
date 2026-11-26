@@ -5,18 +5,21 @@
  * ("2011"). `new Date("2026-11-17")` parses as UTC midnight, which renders as
  * the *previous day* anywhere west of Greenwich — and a bare year becomes
  * "Dec 31" of the year before. Parse calendar dates as local dates instead.
+ * Release dates also arrive as exact-midnight-UTC timestamps
+ * ("2026-11-20T00:00:00.000Z"); those are the same calendar day in disguise.
  */
 
 const YEAR_ONLY = /^\d{4}$/;
 const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
+const MIDNIGHT_UTC = /^(\d{4})-(\d{2})-(\d{2})T00:00:00(?:\.000)?Z$/;
 
 /** Parses a TMDB-style date string as a local calendar date. */
 export function parseCalendarDate(value?: string | null): Date | null {
   if (!value) return null;
   const trimmed = value.trim();
-  const dateOnly = DATE_ONLY.exec(trimmed);
-  if (dateOnly) {
-    const [, y, m, d] = dateOnly;
+  const calendarDay = DATE_ONLY.exec(trimmed) ?? MIDNIGHT_UTC.exec(trimmed);
+  if (calendarDay) {
+    const [, y, m, d] = calendarDay;
     const date = new Date(Number(y), Number(m) - 1, Number(d));
     return Number.isNaN(date.getTime()) ? null : date;
   }

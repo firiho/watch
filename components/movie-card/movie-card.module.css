@@ -560,6 +560,19 @@
     border-color: rgba(255, 80, 80, 0.35);
     color: #ff5050;
   }
+
+  /* Signed in, the panel gains rating rows and the My List button, which pushed the tallest
+     panels ~125px below the poster, over the next rail's heading (~74px below). Two blurb lines
+     and the full release date (the poster shows it at rest; the year stays in the meta row)
+     give that height back. */
+  .panelContent:has(> .addButton) .description {
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .panelContent:has(> .addButton) .releaseDateLine {
+    display: none;
+  }
 }
 
 @keyframes spin {
@@ -582,14 +595,33 @@
   }
 
   .title {
-    font-size: 14px;
-    line-height: 1.22;
+    font-size: var(--m-text-footnote);
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: 0;
+  }
+
+  .simpleReleaseDate {
+    margin-top: 4px;
+    font-size: var(--m-text-caption2);
   }
 
   .recBadge {
     top: 6px;
     left: 6px;
     gap: 4px;
+    max-width: calc(100% - 12px);
     padding: 3px 5px;
+  }
+
+  .recLabel {
+    font-size: var(--m-text-caption2);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+  }
+
+  /* The stars follow the card: ~8px on a 120px rail poster (--card-w), 10px in grids. */
+  .recBadge .recStars {
+    --star-size: clamp(8px, calc(var(--card-w, 160px) * 0.07), 10px);
   }
 }

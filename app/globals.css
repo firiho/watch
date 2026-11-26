@@ -18,7 +18,10 @@
   --text-secondary: #8892b0;
   --text-white: #e6f1ff;
   --text-muted: rgba(255, 255, 255, 0.56);
-  --text-faint: rgba(255, 255, 255, 0.38);
+  /* Quietest tier that still carries small text: ≥ 4.5:1 on --bg-color and every --surface-*. */
+  --text-faint: rgba(255, 255, 255, 0.5);
+  /* Disabled control labels only (WCAG exempts disabled controls from contrast minimums). */
+  --text-disabled: rgba(255, 255, 255, 0.38);
 
   /* Surfaces (dark, layered) */
   --surface-1: #0a0a0a;
@@ -87,6 +90,36 @@
   --safe-left: env(safe-area-inset-left, 0px);
 
   --z-tabbar: 900;
+
+  /* ---------------------------------------------------------------------------
+   * Mobile scale — used ONLY inside ≤768px rules. One size per role, so the same
+   * kind of thing is the same size on every screen. Roles sit a step below Apple's
+   * iOS numbers on purpose: Inter renders larger than SF Pro at the same px, and
+   * our titles are heavier. Desktop rules never use these.
+   * ------------------------------------------------------------------------- */
+  --m-text-large-title: 34px; /* page titles (Movies, My List, Recs, Settings, a person's name):
+                                 always the biggest text on the screen, as iOS large titles are */
+  --m-text-hero: 28px;        /* featured-slide title (long titles may step down) */
+  --m-text-title1: 24px;      /* the title in a detail sheet */
+  --m-text-title2: 20px;      /* section headers: rails, Known For, Filmography */
+  --m-text-title3: 18px;      /* sections inside sheets: Cast, Episodes, More Like This */
+  --m-text-headline: 16px;    /* emphasized row titles, sheet headers */
+  --m-text-body: 15px;        /* paragraphs: overviews, subtitles, bios */
+  --m-text-control: 15px;     /* button labels */
+  --m-text-subhead: 14px;     /* secondary values, list rows */
+  --m-text-footnote: 13px;    /* meta lines, chips, card titles, segmented labels */
+  --m-text-caption: 12px;     /* counts, small captions */
+  --m-text-caption2: 11px;    /* uppercase micro-labels */
+  --m-text-tab: 10px;         /* tab bar labels */
+  --m-weight-title: 700;      /* section and sheet titles stop at bold: 800 reads oversized in Inter */
+  --m-weight-large-title: 800; /* page titles only: they must out-rank everything else on screen */
+
+  --m-control-lg: 44px;       /* primary buttons: hero CTAs, Watch on, Sign in */
+  --m-control-md: 36px;       /* secondary buttons and pills: Play trailer, Read more, Show all */
+  --m-control-sm: 32px;       /* segmented controls, filter chips, star filter */
+  --m-chip: 28px;             /* small tags (genres) */
+  --m-icon-btn: 36px;         /* circular icon buttons in bars and sheets (hit area stays --tap) */
+  --m-radius-control: 12px;   /* rounded-rect buttons */
 }
 
 @media (max-width: 1080px) {
@@ -99,7 +132,14 @@
   :root {
     --nav-h: 56px;
     --gutter: 20px;
-    --tabbar-h: calc(54px + var(--safe-bottom));
+    /* Tab bar: a 50px row of tabs over only part of the home-indicator inset, so the
+       labels sit low like iOS 26's. Padding: 18px with a 34px inset (Face ID portrait:
+       labels end ~22px above the edge, ~9px over the indicator), 13px with a 20-21px
+       inset (iPad, Display Zoom landscape: still clear of the indicator), 6px on
+       phones without one. */
+    --tabbar-content-h: 50px;
+    --tabbar-pad-bottom: calc(6px + var(--safe-bottom) * 0.35);
+    --tabbar-h: calc(var(--tabbar-content-h) + var(--tabbar-pad-bottom));
   }
 
   /* The bottom tab bar (rendered with [data-mobile-tabbar]) floats over content,
@@ -157,6 +197,23 @@ body {
 body {
   min-height: 100vh;
   min-height: 100dvh;
+}
+
+/* Desktop Chrome/Edge (and Firefox on macOS) turn a horizontal trackpad swipe that
+   runs past the edge of a scroller (a rail scrolled back to its start, or the page
+   itself) into Back/Forward navigation. This app has sideways scrollers everywhere,
+   so keep horizontal overscroll inside the page. iOS Safari's edge-swipe Back is a
+   system gesture and is unaffected. */
+html,
+body {
+  overscroll-behavior-x: none;
+}
+
+/* While an overlay holds the scroll lock (hooks/use-body-scroll-lock.ts), a pull on a
+   surface no scroller claims must not rubber-band or pull-to-refresh the pinned page
+   behind it (iOS 16+, Chrome). */
+html[data-scroll-locked] {
+  overscroll-behavior: none;
 }
 
 a {
@@ -347,6 +404,15 @@ select {
   backdrop-filter: var(--glass-filter);
   box-shadow: var(--shadow-md);
   font-size: 14px;
+}
+
+/* -----------------------------------------------------------------------------
+ * reCAPTCHA badge (phone sign-in). Google pins it with inline styles
+ * (bottom: 14px; right: -186px), so lift it clear of the iOS home indicator —
+ * and of the tab bar, should a page with one ever use reCAPTCHA.
+ * --------------------------------------------------------------------------- */
+.grecaptcha-badge {
+  bottom: calc(14px + max(var(--safe-bottom), var(--tabbar-offset))) !important;
 }
 
 /* -----------------------------------------------------------------------------

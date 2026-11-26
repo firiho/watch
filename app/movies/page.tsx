@@ -9,7 +9,7 @@ export default async function MoviesPage() {
   const genres = await getGenres('movie');
 
   return (
-    <div className={styles.page}>
+    <main className={styles.page}>
       <header className={styles.discoverHeader}>
         <div className={styles.titleGroup}>
           <h1 className={styles.title}>Movies</h1>
@@ -21,6 +21,6 @@ export default async function MoviesPage() {
       </header>
 
       <DiscoverGrid type="movie" />
-    </div>
+    </main>
   );
 }

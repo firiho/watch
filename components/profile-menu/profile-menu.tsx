@@ -78,6 +78,7 @@ const ProfileMenu = () => {
   useBodyScrollLock(isMounted);
 
   const openMenu = () => {
+    signOutPendingRef.current = false; // re-opened mid-close: the user changed their mind
     const rect = buttonRef.current?.getBoundingClientRect();
     // Anchor by the avatar's right edge, measured from the left, so the
     // scrollbar disappearing under the scroll lock can't misalign it.

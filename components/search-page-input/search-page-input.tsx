@@ -64,7 +64,9 @@ export default function SearchPageInput({ initialQuery = '' }: SearchPageInputPr
     inputRef.current?.blur();
     if (trimmed === initialQuery) return;
     startTransition(() => {
-      router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+      // This field only lives on /search, so a new query replaces the entry: Back then
+      // leaves search instead of stepping through every earlier result set.
+      router.replace(`/search?q=${encodeURIComponent(trimmed)}`);
     });
   };
 

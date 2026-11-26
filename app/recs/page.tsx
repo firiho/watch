@@ -69,7 +69,7 @@ export default function RecsPage() {
   };
 
   return (
-    <div className={styles.page}>
+    <main className={styles.page}>
       <header className={styles.discoverHeader}>
         <div className={styles.titleGroup}>
           <h1 className={styles.title}>{ADMIN_NAME}&apos;s Recs</h1>
@@ -148,6 +148,6 @@ export default function RecsPage() {
           ))}
         </div>
       )}
-    </div>
+    </main>
   );
 }

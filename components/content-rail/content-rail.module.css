@@ -80,6 +80,14 @@
   transition-duration: var(--dur-instant);
 }
 
+/* Mouse desktops: the hover panel opens 10% (~38px) above the poster, so leave it room
+   under the heading instead of letting it cover the title. */
+@media (hover: hover) and (pointer: fine) and (min-width: 769px) {
+  .sectionHeader {
+    margin-bottom: 44px;
+  }
+}
+
 /* ---- Rail ------------------------------------------------------------------- */
 
 .railWrapper {
@@ -290,9 +298,12 @@
     padding: 22px 0;
   }
 
-  /* align with the hero text, which sits on the gutter at this size */
+  /* align with the hero text, which sits on the gutter (plus any side safe area: every
+     notched iPhone in landscape lands in this range) */
   .railContainer {
-    width: calc(100% - 2 * var(--gutter));
+    width: 100%;
+    padding-left: calc(var(--gutter) + var(--safe-left));
+    padding-right: calc(var(--gutter) + var(--safe-right));
   }
 
   .railWrapper {
@@ -315,17 +326,45 @@
   }
 }
 
+/* ---- Phones in landscape ------------------------------------------------------ */
+
+/* They get the desktop rail but only ~320px of height under the 70px top bar. Size the
+   posters so the heading row (44px + 14px) and a whole card, title included, fit on screen,
+   and scale the numbers with them. Mouse desktops never match (pointer: fine). */
+@media (hover: none) and (pointer: coarse) and (min-width: 769px) and (max-height: 500px) {
+  .railWrapper {
+    --rail-gap: 40px;
+    --rail-tail: 18px;
+  }
+
+  .rail {
+    --card-w: clamp(
+      120px,
+      calc((100svh - var(--nav-h) - var(--safe-top) - var(--safe-bottom) - 76px) / 1.5),
+      200px
+    );
+  }
+
+  .bigNumber,
+  .bigNumber.twoDigit {
+    bottom: calc(var(--card-w) * -0.06);
+    font-size: calc(var(--card-w) * 0.7);
+  }
+
+  .bigNumber {
+    left: calc(var(--card-w) * -0.2);
+  }
+
+  .bigNumber.twoDigit {
+    left: calc(var(--card-w) * -0.29);
+  }
+}
+
 /* ---- Phones ----------------------------------------------------------------- */
 
 @media (max-width: 768px) {
   .section {
     padding: 10px 0 12px;
-  }
-
-  .railContainer {
-    width: 100%;
-    padding-left: calc(var(--gutter) + var(--safe-left));
-    padding-right: calc(var(--gutter) + var(--safe-right));
   }
 
   .sectionHeader {
@@ -336,10 +375,10 @@
   .sectionTitle {
     flex: 1 1 auto;
     min-width: 0;
-    font-size: 21px;
-    font-weight: 700;
+    font-size: var(--m-text-title2);
+    font-weight: var(--m-weight-title);
     line-height: 1.2;
-    letter-spacing: -0.015em;
+    letter-spacing: -0.01em;
     overflow: hidden;
     text-overflow: ellipsis;
     color: var(--text-white);
@@ -352,7 +391,7 @@
   .seeAll {
     flex: none;
     margin-right: -2px;
-    font-size: 13px;
+    font-size: var(--m-text-footnote);
   }
 
   .railWrapper {
@@ -391,11 +430,12 @@
     scroll-snap-align: start;
   }
 
+  /* Sized to the poster (as in landscape): 84px beside a 120px card. */
   .bigNumber,
   .bigNumber.twoDigit {
     left: -3px;
     bottom: -3px;
-    font-size: 96px;
+    font-size: calc(var(--card-w) * 0.7);
     letter-spacing: -0.05em;
     color: rgba(255, 255, 255, 0.03);
     -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.32);
@@ -408,5 +448,16 @@
 
   .navArea {
     display: none;
+  }
+}
+
+/* 320px: "Trending TV Shows" gets ~189px beside "See all"; one step down keeps it whole. */
+@media (max-width: 340px) {
+  .sectionTitle {
+    font-size: calc(var(--m-text-title2) - 2px);
+  }
+
+  .seeAll {
+    padding-left: 6px;
   }
 }

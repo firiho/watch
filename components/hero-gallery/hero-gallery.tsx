@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 import type {
   AnimationEvent as ReactAnimationEvent,
   CSSProperties,
@@ -54,6 +54,56 @@ function useReducedMotion() {
   return reduced;
 }
 
+/*
+ * The visitor's own pause (the play/pause button). It lasts for the browser session
+ * (sessionStorage, so it survives client navigation and reloads, never a new visit),
+ * with an in-memory copy for when storage is blocked.
+ */
+const PAUSE_STORAGE_KEY = 'watch.heroPaused';
+let userPausedValue: boolean | null = null;
+const userPausedListeners = new Set<() => void>();
+
+const getUserPaused = () => {
+  if (userPausedValue === null) {
+    try {
+      userPausedValue = window.sessionStorage.getItem(PAUSE_STORAGE_KEY) === '1';
+    } catch {
+      userPausedValue = false;
+    }
+  }
+  return userPausedValue;
+};
+const getServerUserPaused = () => false;
+const subscribeUserPaused = (onChange: () => void) => {
+  userPausedListeners.add(onChange);
+  return () => {
+    userPausedListeners.delete(onChange);
+  };
+};
+const setUserPaused = (value: boolean) => {
+  userPausedValue = value;
+  try {
+    if (value) window.sessionStorage.setItem(PAUSE_STORAGE_KEY, '1');
+    else window.sessionStorage.removeItem(PAUSE_STORAGE_KEY);
+  } catch {
+    /* storage blocked: the in-memory value still holds */
+  }
+  userPausedListeners.forEach((listener) => listener());
+};
+
+const PauseGlyph = () => (
+  <svg className={styles.playPauseGlyph} viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="6" y="5" width="4" height="14" rx="1.3" />
+    <rect x="14" y="5" width="4" height="14" rx="1.3" />
+  </svg>
+);
+
+const PlayGlyph = () => (
+  <svg className={styles.playPauseGlyph} viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M8 5.8v12.4a.9.9 0 0 0 1.37.77l10.1-6.2a.9.9 0 0 0 0-1.54L9.37 5.03A.9.9 0 0 0 8 5.8Z" />
+  </svg>
+);
+
 const PlusIcon = () => (
   <svg className={styles.buttonIcon} viewBox="0 0 24 24" aria-hidden="true">
     <path d="M12 5V19M5 12H19" />
@@ -87,6 +137,7 @@ const HeroGallery = ({ items: initialItems }: HeroGalleryProps) => {
   const [offscreen, setOffscreen] = useState(false);
 
   const reducedMotion = useReducedMotion();
+  const userPaused = useSyncExternalStore(subscribeUserPaused, getUserPaused, getServerUserPaused);
   const { isInList, addItem, removeItem } = useWatchlist();
   const { user } = useAuth();
   const { profile } = useProfile();
@@ -206,7 +257,11 @@ const HeroGallery = ({ items: initialItems }: HeroGalleryProps) => {
   }
 
   const autoRotate = count > 1 && !reducedMotion;
-  const paused = hovering || touching || keyboardFocus || pageHidden || offscreen || Boolean(activeItem);
+  // The visitor's pause holds until they press play: the progress pill goes static (no timer).
+  const rotating = autoRotate && !userPaused;
+  // Everything else only holds the timer where it is.
+  const paused =
+    userPaused || hovering || touching || keyboardFocus || pageHidden || offscreen || Boolean(activeItem);
 
   const handleToggleWatchlist = async (item: ContentItem) => {
     if (!user || adding) return;
@@ -325,6 +380,14 @@ const HeroGallery = ({ items: initialItems }: HeroGalleryProps) => {
     // Reduced motion collapses every CSS animation to ~0ms; never let that spin the carousel.
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     goNext();
+  };
+
+  const handleTogglePause = () => {
+    haptic('selection');
+    const next = !userPaused;
+    setUserPaused(next);
+    // Play is an explicit request: resume now, even though keyboard focus is still inside.
+    if (!next) setKeyboardFocus(false);
   };
 
   const sectionStyle = {
@@ -466,31 +529,47 @@ const HeroGallery = ({ items: initialItems }: HeroGalleryProps) => {
       </div>
 
       {count > 1 && (
-        <div className={styles.indicators} data-hover-pause="">
-          {items.map((item, index) => {
-            const isActive = index === current;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                className={styles.indicator}
-                data-active={isActive ? '' : undefined}
-                onClick={() => goTo(index)}
-                aria-label={`Slide ${index + 1} of ${count}: ${item.title}`}
-                aria-current={isActive ? 'true' : undefined}
-              >
-                <span className={styles.pill}>
-                  {isActive && (
-                    <span
-                      key={`${item.id}-${index}`}
-                      className={`${styles.pillFill} ${autoRotate ? '' : styles.pillFillStatic}`}
-                      onAnimationEnd={autoRotate ? handleProgressEnd : undefined}
-                    />
-                  )}
-                </span>
-              </button>
-            );
-          })}
+        <div className={styles.controls}>
+          <div className={styles.indicators} data-hover-pause="">
+            {items.map((item, index) => {
+              const isActive = index === current;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={styles.indicator}
+                  data-active={isActive ? '' : undefined}
+                  onClick={() => goTo(index)}
+                  aria-label={`Slide ${index + 1} of ${count}: ${item.title}`}
+                  aria-current={isActive ? 'true' : undefined}
+                >
+                  <span className={styles.pill}>
+                    {isActive && (
+                      <span
+                        key={`${item.id}-${index}`}
+                        className={`${styles.pillFill} ${rotating ? '' : styles.pillFillStatic}`}
+                        onAnimationEnd={rotating ? handleProgressEnd : undefined}
+                      />
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Not a hover-pause zone, so pressing play visibly resumes right away. The name stays
+              fixed and aria-pressed carries the state (a label that flips as well reads backwards). */}
+          {autoRotate && (
+            <button
+              type="button"
+              className={styles.playPause}
+              onClick={handleTogglePause}
+              aria-label="Pause slideshow"
+              aria-pressed={userPaused}
+            >
+              <span className={styles.playPauseFace}>{userPaused ? <PlayGlyph /> : <PauseGlyph />}</span>
+            </button>
+          )}
         </div>
       )}
     </section>

@@ -46,7 +46,8 @@ async function SearchResults({ query }: { query: string }) {
         </div>
         <h2 className={styles.emptyTitle}>No results for &ldquo;{query}&rdquo;</h2>
         <p className={styles.emptyText}>Try searching for something else</p>
-        <Link href="/search" className={styles.emptyAction}>
+        {/* A refinement, like a new query: replace the entry rather than add one. */}
+        <Link href="/search" replace className={styles.emptyAction}>
           Clear search
         </Link>
       </div>
@@ -91,15 +92,12 @@ export default async function SearchPage({ searchParams }: PageProps) {
   const query = (Array.isArray(q) ? q[0] : q)?.trim() ?? '';
 
   return (
-    <div className={styles.page}>
+    <main className={styles.page}>
       <header className={styles.discoverHeader}>
         <div className={styles.titleGroup}>
           <h1 className={styles.title}>Search</h1>
-          <p className={styles.description}>
-            {query
-              ? `Displaying results for "${query}". Find exactly what you're looking for in our vast library.`
-              : 'Search for your favorite movies and TV shows across our entire collection.'}
-          </p>
+          {/* The query is named once, in the results line (or the no-results title) below. */}
+          <p className={styles.description}>Search for your favorite movies and TV shows across our entire collection.</p>
         </div>
         <div className={styles.searchField}>
           <SearchPageInput initialQuery={query} />
@@ -119,6 +117,6 @@ export default async function SearchPage({ searchParams }: PageProps) {
           <p className={styles.emptyText}>Enter a search term to find movies and TV shows.</p>
         </div>
       )}
-    </div>
+    </main>
   );
 }

@@ -35,7 +35,7 @@ export interface ContentItem {
   releaseHistory?: Array<{
     type: number;
     label: string;
-    date: string;
+    date: string; // calendar day, "YYYY-MM-DD"
   }>;
   lastEpisode?: {
     season: number;
@@ -114,6 +114,13 @@ function mapRecommendations(results: any[] = [], fallbackType: 'movie' | 'tv'): 
     });
 }
 
+// TMDB stores release dates as calendar days but serializes them as midnight-UTC
+// timestamps ("2026-11-20T00:00:00.000Z"). Keep just the day: read as an instant,
+// it formats as the day before anywhere west of UTC.
+function toCalendarDay(value: string): string {
+  return /^\d{4}-\d{2}-\d{2}T/.test(value) ? value.slice(0, 10) : value;
+}
+
 function getReleaseHistoryFromUSReleaseDates(releaseDates: any[] = []) {
   const targetTypes = [3, 4];
   const history = targetTypes
@@ -127,7 +134,7 @@ function getReleaseHistoryFromUSReleaseDates(releaseDates: any[] = []) {
       return {
         type,
         label: type === 4 ? 'HD' : 'Theaters',
-        date: matches[0].release_date,
+        date: toCalendarDay(matches[0].release_date),
       };
     })
     .filter(Boolean) as Array<{ type: number; label: string; date: string }>;

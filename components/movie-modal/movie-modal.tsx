@@ -36,8 +36,8 @@ const MAX_PROVIDER_LOGOS = 3;
  * Helpers
  * ------------------------------------------------------------------------- */
 
-/** TMDB URLs built from a null path end in "/null" — treat those as missing. */
-const usableImage = (url?: string | null) => (url && !/\/(null|undefined)$/.test(url) ? url : null);
+/** TMDB URLs built from a null path end in "null" (e.g. ".../w500null") — treat those as missing. */
+const usableImage = (url?: string | null) => (url && !/(null|undefined)$/.test(url) ? url : null);
 
 /** Swap a TMDB size segment ("/t/p/original/…") for a UI-appropriate one. */
 const tmdbSized = (url: string | null, size: string) => (url ? url.replace(/\/t\/p\/[^/]+\//, `/t/p/${size}/`) : null);
@@ -170,16 +170,26 @@ const DetailSkeleton = () => (
   </div>
 );
 
+/**
+ * Same grid and line boxes as a loaded row (title, meta, overview lines), so rows don't jump.
+ * Three overview bars for desktop's 3-line clamp; phones (2-line clamp) hide the third.
+ */
 const EpisodeSkeletons = () => (
   <>
     {[0, 1, 2].map((n) => (
       <div key={n} className={`${styles.episode} ${styles.episodeSkeleton}`} aria-hidden="true">
-        <span className={styles.epNumber} />
+        <span className={styles.epNumber}>
+          <span className={`${styles.skel} ${styles.skelEpNumber}`} />
+        </span>
         <span className={`${styles.epStill} ${styles.skel}`} />
         <div className={styles.epInfo}>
-          <span className={styles.skel} style={{ width: '48%', height: 14 }} />
-          <span className={styles.skel} style={{ width: '32%', height: 10 }} />
-          <span className={styles.skel} style={{ width: '86%', height: 10 }} />
+          <span className={`${styles.skel} ${styles.skelEpTitle}`} />
+          <span className={`${styles.skel} ${styles.skelEpMeta}`} />
+          <span className={styles.skelEpOverview}>
+            <span className={styles.skel} />
+            <span className={styles.skel} />
+            <span className={styles.skel} />
+          </span>
         </div>
       </div>
     ))}
@@ -190,7 +200,13 @@ const EpisodeSkeletons = () => (
  * Modal
  * ------------------------------------------------------------------------- */
 
-type Fact = { key: string; label: string; value: ReactNode; wide?: boolean; desktopOnly?: boolean };
+/** `shortLabel` replaces `label` on phones, where facts sit two to a row (the full one stays for screen readers). */
+type Fact = { key: string; label: string; shortLabel?: string; value: ReactNode; wide?: boolean; desktopOnly?: boolean };
+
+/** A focus target worth handing focus back to: a real, connected element outside the modal. */
+function returnTargetFrom(el: Element | null, modalRoot: HTMLElement | null) {
+  return el instanceof HTMLElement && el !== document.body && el.isConnected && !modalRoot?.contains(el) ? el : null;
+}
 
 export default function MovieModal() {
   const { activeItem, closeModal, openModal } = useModal();
@@ -263,13 +279,22 @@ export default function MovieModal() {
 
     if (activeItem) {
       if (!previous) {
-        returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        returnFocusRef.current = returnTargetFrom(document.activeElement, sheet);
         setEntered(false);
       } else {
         // Re-opened mid-exit or switched via "More Like This".
+        if (!returnFocusRef.current) {
+          // Mid-exit re-open: the close already handed focus back to the page — take it again.
+          returnFocusRef.current = returnTargetFrom(document.activeElement, sheet);
+          sheet?.focus({ preventScroll: true });
+        }
         clearMotion(sheet, scrim);
         if (previous.id !== activeItem.id || previous.type !== activeItem.type) {
           sheet?.scrollTo({ top: 0 });
+          // Focus belongs on the sheet: inside it, the old title's tree (with the focused
+          // "More Like This" card) is about to be replaced; outside it (<body>, or the ⌘K
+          // trigger the palette handed focus back to), it would sit behind the dialog.
+          sheet?.focus({ preventScroll: true });
         }
       }
       renderedRef.current = activeItem;
@@ -661,10 +686,18 @@ export default function MovieModal() {
     closeModal();
   };
 
+  const retryLoad = () => {
+    // The error view (this button included) gives way to the skeleton: keep focus in the dialog.
+    sheetRef.current?.focus({ preventScroll: true });
+    setReloadToken((n) => n + 1);
+  };
+
   const handleSetCheckpoint = async (seasonNum: number, episodeNum: number) => {
-    if (!user || !activeItem) return;
+    const key = `${seasonNum}-${episodeNum}`;
+    // Already saving this one (the button is aria-disabled, not disabled, so it keeps focus).
+    if (!user || !activeItem || settingCheckpoint === key) return;
     haptic('success');
-    setSettingCheckpoint(`${seasonNum}-${episodeNum}`);
+    setSettingCheckpoint(key);
     try {
       await setCheckpoint(user.uid, activeItem.id, seasonNum, episodeNum);
       setCheckpointData({ seasonNumber: seasonNum, episodeNumber: episodeNum, timestamp: new Date().toISOString() });
@@ -718,7 +751,7 @@ export default function MovieModal() {
   };
 
   const handleToggleReminder = () => {
-    if (!data) return;
+    if (!data || addingRem) return;
     haptic('selection');
     toggleReminder({ id: data.id, title: data.title, mediaType: data.mediaType, preloaded: data });
   };
@@ -779,15 +812,21 @@ export default function MovieModal() {
       facts.push({
         key: 'directors',
         label: `Director${directors.length > 1 ? 's' : ''}`,
-        wide: isLong(directors.map((d) => d.name).join(', ')),
-        value: directors.map((director, index) => (
-          <span key={director.id}>
-            <Link href={`/star/${director.id}`} className={styles.inlineLink} onClick={closeForNavigation}>
-              {director.name}
-            </Link>
-            {index < directors.length - 1 ? ', ' : ''}
+        // Several names get the full row on phones, so a pair stays on one line.
+        wide: directors.length > 1 || isLong(directors.map((d) => d.name).join(', ')),
+        value: (
+          // On touch each name is a flex item with its own 44px band (see .directors).
+          <span className={styles.directors}>
+            {directors.map((director, index) => (
+              <span key={director.id}>
+                <Link href={`/star/${director.id}`} className={styles.inlineLink} onClick={closeForNavigation}>
+                  {director.name}
+                </Link>
+                {index < directors.length - 1 ? ', ' : ''}
+              </span>
+            ))}
           </span>
-        )),
+        ),
       });
     }
     const creators = isTV ? joinList(data.creators) : null;
@@ -795,11 +834,29 @@ export default function MovieModal() {
       facts.push({ key: 'creators', label: `Creator${(data.creators?.length ?? 0) > 1 ? 's' : ''}`, value: creators, wide: isLong(creators) });
     }
     const studios = joinList(data.productionStudios);
-    if (studios) facts.push({ key: 'studios', label: 'Production Studios', value: studios, wide: isLong(studios) });
+    if (studios) {
+      facts.push({ key: 'studios', label: 'Production Studios', shortLabel: 'Studios', value: studios, wide: isLong(studios) });
+    }
     const countries = joinList(data.productionCountries);
-    if (countries) facts.push({ key: 'countries', label: 'Production Countries', value: countries, wide: isLong(countries) });
+    if (countries) {
+      facts.push({
+        key: 'countries',
+        label: 'Production Countries',
+        shortLabel: 'Countries',
+        value: countries,
+        wide: isLong(countries),
+      });
+    }
     const languages = joinList(data.spokenLanguages);
-    if (languages) facts.push({ key: 'languages', label: 'Spoken Languages', value: languages, wide: isLong(languages) });
+    if (languages) {
+      facts.push({
+        key: 'languages',
+        label: 'Spoken Languages',
+        shortLabel: 'Languages',
+        value: languages,
+        wide: isLong(languages),
+      });
+    }
     if (typeof data.budget === 'number' && data.budget > 0) {
       facts.push({ key: 'budget', label: 'Budget', value: formatCurrency(data.budget) });
     }
@@ -810,7 +867,7 @@ export default function MovieModal() {
     content = (
       <div key={dataKey} className={styles.content}>
         <header className={styles.head}>
-          <div className={styles.hero} data-sheet-handle>
+          <div className={styles.hero}>
             <TrailerPlayer
               videoKey={trailer?.key ?? null}
               title={data.title}
@@ -886,7 +943,7 @@ export default function MovieModal() {
                     type="button"
                     className={`${styles.roundButton} ${inList ? styles.isOn : ''} ${providers ? '' : styles.listWide}`}
                     onClick={handleToggleWatchlist}
-                    disabled={adding}
+                    aria-disabled={adding || undefined}
                     aria-label={inList ? 'Remove from My List' : 'Add to My List'}
                     title={inList ? 'Remove from My List' : 'Add to My List'}
                   >
@@ -905,7 +962,7 @@ export default function MovieModal() {
                     type="button"
                     className={`${styles.roundButton} ${styles.bellButton} ${hasReminder(data.id) ? styles.isOn : ''}`}
                     onClick={handleToggleReminder}
-                    disabled={addingRem}
+                    aria-disabled={addingRem || undefined}
                     aria-label={hasReminder(data.id) ? 'Remove reminder' : 'Set reminder'}
                     aria-pressed={hasReminder(data.id)}
                     title={hasReminder(data.id) ? 'Remove Reminder' : 'Set Reminder'}
@@ -952,9 +1009,11 @@ export default function MovieModal() {
 
           {data.description && (
             <div className={styles.overviewWrap}>
+              {/* tabIndex -1: "more" unmounts once pressed, so focus moves here instead of to <body>. */}
               <p
                 ref={overviewRef}
                 className={`${styles.overview} ${overviewExpanded ? styles.overviewOpen : ''}`}
+                tabIndex={-1}
                 onClick={overviewClamped && !overviewExpanded ? () => setOverviewExpanded(true) : undefined}
               >
                 {data.description}
@@ -963,7 +1022,10 @@ export default function MovieModal() {
                 <button
                   type="button"
                   className={styles.moreToggle}
-                  onClick={() => setOverviewExpanded(true)}
+                  onClick={() => {
+                    setOverviewExpanded(true);
+                    overviewRef.current?.focus({ preventScroll: true });
+                  }}
                   aria-expanded={false}
                 >
                   more
@@ -979,7 +1041,18 @@ export default function MovieModal() {
                   key={fact.key}
                   className={`${styles.fact} ${fact.wide ? styles.factWide : ''} ${fact.desktopOnly ? styles.factDesktop : ''}`}
                 >
-                  <dt className={styles.label}>{fact.label}</dt>
+                  <dt className={styles.label}>
+                    {fact.shortLabel ? (
+                      <>
+                        <span className={styles.labelFull}>{fact.label}</span>
+                        <span className={styles.labelShort} aria-hidden="true">
+                          {fact.shortLabel}
+                        </span>
+                      </>
+                    ) : (
+                      fact.label
+                    )}
+                  </dt>
                   <dd>{fact.value}</dd>
                 </div>
               ))}
@@ -995,7 +1068,7 @@ export default function MovieModal() {
               </h3>
               <span className={styles.sectionRule} aria-hidden="true" />
             </div>
-            <div className={`${styles.row} ${styles.castRow}`} data-hscroll>
+            <div className={styles.row} data-hscroll>
               {cast.map((member) => (
                 <Link
                   href={`/star/${member.id}`}
@@ -1047,7 +1120,8 @@ export default function MovieModal() {
                         aria-pressed={s.season_number === activeSeason}
                         onClick={() => changeSeason(s.season_number)}
                       >
-                        {s.name}
+                        {/* The label clips its own overflow, so the chip's 44px hit area isn't clipped with it. */}
+                        <span className={styles.seasonChipLabel}>{s.name}</span>
                       </button>
                     ))}
                   </div>
@@ -1101,7 +1175,7 @@ export default function MovieModal() {
                               type="button"
                               className={`${styles.checkpointButton} ${isCurrent ? styles.checkpointActive : ''}`}
                               onClick={() => handleSetCheckpoint(activeSeason, ep.episode_number)}
-                              disabled={saving}
+                              aria-disabled={saving || undefined}
                               aria-pressed={isCurrent}
                               aria-label={`Mark S${activeSeason} · E${ep.episode_number} as your checkpoint`}
                               title="Mark as Current Checkpoint"
@@ -1112,8 +1186,13 @@ export default function MovieModal() {
                         </div>
                         <div className={styles.epMeta}>
                           <span className={styles.epIndex}>E{ep.episode_number}</span>
-                          {airDate && <span title={airDate}>{airDate}</span>}
-                          {runtime && <span>{runtime}</span>}
+                          {(airDate || runtime) && (
+                            <span className={styles.epFacts}>
+                              {airDate && <span title={airDate}>{airDate}</span>}
+                              {airDate && runtime && <span className={styles.epDot} aria-hidden="true" />}
+                              {runtime && <span>{runtime}</span>}
+                            </span>
+                          )}
                           {isCurrent && <span className={styles.epHere}>You&apos;re here</span>}
                         </div>
                         <p className={styles.epOverview}>{ep.overview || 'No overview available.'}</p>
@@ -1173,7 +1252,7 @@ export default function MovieModal() {
       <div className={styles.errorState} role="alert">
         <p className={styles.errorTitle}>We couldn&apos;t load this title.</p>
         <p className={styles.errorText}>Check your connection and try again.</p>
-        <button type="button" className={styles.retryButton} onClick={() => setReloadToken((n) => n + 1)}>
+        <button type="button" className={styles.retryButton} onClick={retryLoad}>
           Try again
         </button>
       </div>

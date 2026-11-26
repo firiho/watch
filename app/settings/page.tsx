@@ -165,7 +165,7 @@ export default function SettingsPage() {
 
   if (!user) {
     return (
-      <div className={pageStyles.page}>
+      <main className={pageStyles.page}>
         {authLoading ? (
           <SettingsSkeleton />
         ) : (
@@ -183,7 +183,7 @@ export default function SettingsPage() {
             </Link>
           </div>
         )}
-      </div>
+      </main>
     );
   }
 
@@ -191,7 +191,7 @@ export default function SettingsPage() {
   const telegramChecked = telegramConnected && !confirmingDisconnect;
 
   return (
-    <div className={pageStyles.page}>
+    <main className={pageStyles.page}>
       <div className={styles.shell}>
         <header className={styles.header}>
           <h1 className={pageStyles.title}>Settings</h1>
@@ -402,6 +402,6 @@ export default function SettingsPage() {
           <p className={styles.groupFooter}>You&apos;re signed in with your phone number.</p>
         </section>
       </div>
-    </div>
+    </main>
   );
 }

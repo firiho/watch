@@ -86,6 +86,12 @@
   gap: 8px;
 }
 
+/* Unrated + reminders. No box of its own here (the buttons lay out exactly as direct
+   children of .toggles); phones turn it into a row that wraps as one piece. */
+.extras {
+  display: contents;
+}
+
 .starGroup {
   display: inline-flex;
   align-items: center;
@@ -208,80 +214,23 @@
   }
 }
 
-/* Touch tablets on the desktop layout: 44px targets. */
-@media (pointer: coarse) {
+/* ---- Touch: phones, plus touch tablets and landscape phones on the desktop layout ---- */
+
+/* 40px visuals, 44px hit areas. */
+@media (max-width: 768px), (pointer: coarse) {
   .bar {
     --ctl-h: 40px;
-  }
-}
-
-/* ---- Mobile ---------------------------------------------------------------- */
-
-@media (max-width: 768px) {
-  .bar {
-    --ctl-h: 40px;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 12px 16px;
-    width: 100%;
-  }
-
-  .segmented {
-    --seg-radius: 12px;
-    grid-column: 1;
-    grid-row: 1;
-    display: grid;
-    width: 100%;
-    max-width: 420px;
-  }
-
-  .count {
-    grid-column: 2;
-    grid-row: 1;
-    margin-left: 0;
-  }
-
-  .toggles {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-
-  /* Mobile controls use the system face; mono stays for the count. */
-  .segment {
-    min-width: 0;
-    padding: 0 8px;
-    font-family: var(--font-sans);
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-  }
-
-  .segment.selected {
-    font-weight: 600;
   }
 
   .bar .starGroup .starFilter {
     --star-size: 18px;
   }
 
+  /* 18px glyph + 9px a side: the stars sit on a 36px pitch. */
   .bar .starGroup .starFilter button {
-    padding: 0 9px; /* 36px wide */
+    padding: 0 9px;
   }
 
-  .pill {
-    padding: 0 16px;
-    font-family: var(--font-sans);
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-  }
-
-  .iconPill {
-    padding: 0;
-  }
-
-  /* 40px visuals, 44px hit areas */
   .segment::after,
   .bar .starGroup .starFilter button::after,
   .pill::after {
@@ -296,5 +245,130 @@
 
   .iconPill::after {
     inset: -2px;
+  }
+
+  /* Neighbouring stars meet halfway between their glyphs, so each owns its whole 36px
+     pitch and none takes a neighbour's taps. Only the end stars have room to reach
+     further: across the pill's 4px padding and half of the 8px gap beyond it (44px). */
+  .bar .starGroup .starFilter button:first-child::after {
+    left: -8px;
+  }
+
+  .bar .starGroup .starFilter button:last-child::after {
+    right: -8px;
+  }
+}
+
+/* ---- Mobile ---------------------------------------------------------------- */
+
+/* Phones: 32px visuals (--m-control-sm) that each keep a 44px target. The rows are
+   12px apart, so the 6px each target reaches past its visual never overlaps the row
+   above or below. */
+@media (max-width: 768px) {
+  .bar {
+    --ctl-h: var(--m-control-sm);
+    --reach: calc((var(--tap) - var(--ctl-h)) / 2); /* 6px: target overhang past a 32px visual */
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px 16px;
+    width: 100%;
+  }
+
+  .segmented {
+    --seg-radius: 9px;
+    grid-column: 1;
+    grid-row: 1;
+    display: grid;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .count {
+    grid-column: 2;
+    grid-row: 1;
+    margin-left: 0;
+    font-size: var(--m-text-caption);
+  }
+
+  /* Wraps on the narrowest phones (Unrated and the bell drop under the stars, together);
+     the 12px row gap keeps the wrapped row's targets clear of the stars'. */
+  .toggles {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    gap: 12px 8px;
+  }
+
+  .extras {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Mobile controls use the system face; mono stays for the count. */
+  .segment {
+    min-width: 0;
+    padding: 0 8px;
+    font-family: var(--font-sans);
+    font-size: var(--m-text-footnote);
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+
+  .segment.selected {
+    font-weight: 600;
+  }
+
+  /* The segment sits 2px inside the track, so it reaches 2px further for 44px. */
+  .segment::after {
+    inset: calc(-2px - var(--reach)) 0;
+  }
+
+  /* Stars on a 44px pitch: each star owns a full 44px column of the pill, so none is
+     short of a full target and none reaches into a neighbour's. */
+  .starGroup {
+    padding: 0;
+  }
+
+  .bar .starGroup .starFilter {
+    --star-size: 16px;
+  }
+
+  .bar .starGroup .starFilter button {
+    width: var(--tap);
+    padding: 0;
+  }
+
+  .bar .starGroup .starFilter button::after,
+  .bar .starGroup .starFilter button:first-child::after,
+  .bar .starGroup .starFilter button:last-child::after {
+    inset: calc(-1 * var(--reach)) 0;
+  }
+
+  .pill {
+    padding: 0 11px;
+    font-family: var(--font-sans);
+    font-size: var(--m-text-footnote);
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+
+  .pill::after {
+    inset: calc(-1 * var(--reach)) 0;
+  }
+
+  .iconPill {
+    padding: 0;
+  }
+
+  /* 32px circle, 44px square target: 6px into the 8px gap beside it, short of the
+     Unrated pill (whose target stops at its edges). */
+  .iconPill::after {
+    inset: calc(-1 * var(--reach));
+  }
+
+  .iconPill svg {
+    width: 15px;
+    height: 15px;
   }
 }

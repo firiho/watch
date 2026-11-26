@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import {
   RecaptchaVerifier,
   signInWithPhoneNumber,
@@ -49,12 +50,19 @@ function keepVisibleAboveKeyboard(target: HTMLElement | null) {
     const rect = target.getBoundingClientRect();
     const visibleBottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight;
     if (rect.bottom + 12 > visibleBottom) {
-      target.scrollIntoView({ block: 'end', behavior: 'smooth' });
+      // An explicit 'smooth' would override globals.css's reduced-motion `scroll-behavior: auto`.
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      target.scrollIntoView({ block: 'end', behavior: reduceMotion ? 'auto' : 'smooth' });
     }
   };
   viewport?.addEventListener('resize', reveal);
   window.setTimeout(reveal, 450);
 }
+
+// The reCAPTCHA host is portaled into <body>, which only exists on the client.
+const subscribeNothing = () => () => {};
+const getPortalTarget = () => document.body;
+const getServerPortalTarget = () => null;
 
 function ErrorIcon() {
   return (
@@ -84,6 +92,7 @@ export default function PhoneAuth() {
   // Set when the code reaches full length by typing/autofill; submits once on the next render.
   const autoSubmitArmed = useRef(false);
   const router = useRouter();
+  const portalTarget = useSyncExternalStore(subscribeNothing, getPortalTarget, getServerPortalTarget);
 
   // Tear down any existing verifier and DELETE its host node entirely.
   // grecaptcha keeps an internal registry keyed on the DOM element, so it
@@ -208,8 +217,14 @@ export default function PhoneAuth() {
 
   return (
     <div className={styles.authWrapper}>
+      {/* Invisible reCAPTCHA mounts here; rebuilt fresh on every send. It lives in <body>,
+          outside the card: the card's backdrop-filter (like any filter or transform) makes
+          Google's position:fixed badge pin to the card instead of the viewport corner,
+          right over the submit button. Mounted for the phone step only, so the badge leaves with it. */}
+      {step === 'phone' && portalTarget && createPortal(<div ref={recaptchaRef} data-recaptcha-host="" />, portalTarget)}
+
       {step === 'phone' ? (
-        <form key="phone" onSubmit={handleSendOtp} className={styles.form}>
+        <form key="phone" onSubmit={handleSendOtp} className={`${styles.form} ${styles.phoneForm}`}>
           <div className={styles.inputGroup}>
             <label htmlFor="phoneNumber" className={styles.label}>Phone Number</label>
             <div className={styles.phoneRow}>
@@ -261,9 +276,6 @@ export default function PhoneAuth() {
               </div>
             </div>
           </div>
-
-          {/* Invisible reCAPTCHA mounts here; rebuilt fresh on every send. */}
-          <div ref={recaptchaRef}></div>
 
           {error && (
             <div id="auth-error" className={styles.errorMessage} role="alert">

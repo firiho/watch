@@ -262,7 +262,7 @@ export function shapeCredits(
   if (primaryIsActing) pushGroup('acting', 'Acting', acting);
   const primaryGroup = crewGroups.find((group) => group.department === primary);
   if (!primaryIsActing && primaryGroup) {
-    pushGroup(primaryGroup.department.toLowerCase(), DEPARTMENT_LABELS[primary] ?? primary, primaryGroup.credits);
+    pushGroup(primaryGroup.department.toLowerCase().replace(/[^a-z]+/g, '-'), DEPARTMENT_LABELS[primary] ?? primary, primaryGroup.credits);
   }
   if (!primaryIsActing) pushGroup('acting', 'Acting', acting);
   for (const group of crewGroups) {

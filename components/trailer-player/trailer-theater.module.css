@@ -91,11 +91,22 @@
   opacity: 0;
 }
 
-.close {
+/* Top-right group: Play/Pause beside Close. Keyboard focus stays out here (the
+   frame is never a tab stop), so this is what keys drive; pointers can use either
+   these or YouTube's own controls. Clear of the frame: above it, or stacked in the
+   side gutter on landscape phones. */
+.toolbar {
   position: absolute;
   top: calc(var(--safe-top) + 16px);
   right: calc(var(--safe-right) + 16px);
   z-index: 2;
+  display: flex;
+  gap: 10px;
+}
+
+/* Fades run on the buttons, not the group: an ancestor animating opacity would
+   become their backdrop root and drop the glass blur mid-fade. */
+.button {
   display: grid;
   place-items: center;
   width: 44px;
@@ -115,25 +126,30 @@
     border-color var(--dur-fast) var(--ease-out);
 }
 
-.close svg {
+.closing .button {
+  animation: fadeOut var(--dur-fast) var(--ease-in) forwards;
+}
+
+.button svg {
   width: 20px;
   height: 20px;
 }
 
-.close:active {
+.buttonIcon {
+  display: inline-flex;
+  animation: iconPop var(--dur-base) var(--ease-spring);
+}
+
+.button:active {
   transform: scale(0.92);
   transition-duration: var(--dur-instant);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .close:hover {
+  .button:hover {
     background: rgba(255, 255, 255, 0.18);
     border-color: rgba(255, 255, 255, 0.3);
   }
-}
-
-.closing .close {
-  animation: fadeOut var(--dur-fast) var(--ease-in) forwards;
 }
 
 @media (max-width: 768px) {
@@ -141,13 +157,52 @@
     --gap-x: 12px;
     --gap-y: 76px;
   }
+
+  /* The same 36px glass icon buttons as the sheet's close and trailer controls, each
+     with a centered 44px hit area (8px apart, so neighboring areas meet, never overlap). */
+  .toolbar {
+    gap: 8px;
+  }
+
+  .button {
+    position: relative;
+    width: var(--m-icon-btn);
+    height: var(--m-icon-btn);
+  }
+
+  .button svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--tap);
+    height: var(--tap);
+    margin: calc(var(--tap) / -2) 0 0 calc(var(--tap) / -2);
+  }
 }
 
-/* Landscape phones: fit the height, keep the close button clear of the frame. */
+/* Landscape phones: fit the height, keep the buttons clear of the frame. */
 @media (orientation: landscape) and (max-height: 520px) {
   .frame {
     --gap-x: 76px;
     --gap-y: 12px;
+  }
+
+  /* Close stays in the corner; Play/Pause goes under it. */
+  .toolbar {
+    flex-direction: column-reverse;
+  }
+}
+
+@keyframes iconPop {
+  from {
+    transform: scale(0.6);
+    opacity: 0.3;
   }
 }
 

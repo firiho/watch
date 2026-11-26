@@ -7,8 +7,10 @@ import styles from './navbar.module.css';
 import Logo from '../logo/logo';
 import Search from '../search/search';
 import ProfileMenu from '../profile-menu/profile-menu';
+import NotificationsBell from '../inbox-popup/notifications-bell';
 import { useAuth } from '@/context/auth-context';
 import { isScrollLocked } from '@/hooks/use-body-scroll-lock';
+import { useInAppBack } from './use-in-app-history';
 
 /** Scroll distance (px) over which the bar goes from transparent to glass. */
 const GLASS_DISTANCE = 96;
@@ -17,12 +19,37 @@ const READY_FALLBACK_MS = 900;
 
 const isActive = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
+/**
+ * Screens you drill into rather than tabs (see mobile-tab-bar.tsx). On phones
+ * the bar shows Back in place of the logo there. Unknown paths (the 404 page)
+ * keep the logo: that page has its own "Back to Safety" and the tab bar.
+ */
+const PUSHED_ROUTES = ['/star', '/search', '/settings', '/auth'];
+
+const BackChevron = () => (
+  <svg
+    className={styles.backChevron}
+    viewBox="0 0 12 20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.4"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path d="M10 2 2 10l8 8" />
+  </svg>
+);
+
 const Navbar = () => {
   const { user, loading } = useAuth();
   const pathname = usePathname() || '/';
+  const goBack = useInAppBack();
   const headerRef = useRef<HTMLElement>(null);
   const [fallbackReady, setFallbackReady] = useState(false);
   const ready = !loading || fallbackReady;
+  const pushed = PUSHED_ROUTES.some((href) => isActive(pathname, href));
 
   // Scroll-linked glass. Written straight onto the element (no React state per
   // frame), coalesced to one write per animation frame, and frozen while an
@@ -92,8 +119,15 @@ const Navbar = () => {
   const onAuthPage = pathname === '/auth' || pathname.startsWith('/auth/');
 
   return (
-    <header ref={headerRef} className={styles.header}>
+    <header ref={headerRef} className={styles.header} data-pushed={pushed ? '' : undefined}>
       <div className={styles.inner}>
+        {pushed && (
+          <button type="button" className={styles.back} onClick={goBack}>
+            <BackChevron />
+            Back
+          </button>
+        )}
+
         <Link href="/" className={`${styles.brand} logo-link`} draggable={false}>
           <Logo />
           <span className={styles.wordmark}>Watch</span>
@@ -123,9 +157,13 @@ const Navbar = () => {
           <Search />
 
           {user ? (
-            <div className={styles.account}>
-              <ProfileMenu />
-            </div>
+            <>
+              {/* Phones only (hidden by its CSS on desktop, which keeps the reminder stack). */}
+              <NotificationsBell />
+              <div className={styles.account}>
+                <ProfileMenu />
+              </div>
+            </>
           ) : (
             !onAuthPage && (
               <div className={styles.account}>
